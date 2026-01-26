@@ -34,3 +34,6 @@ go.work.sum
 # ai 
 .spec/
 .claude/
+
+# misc
+.DS_STORE
