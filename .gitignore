@@ -33,6 +33,4 @@ go.work.sum
 
 # ai 
 .spec/
-AGENTS.md
-CLAUDE.md
 .claude/
