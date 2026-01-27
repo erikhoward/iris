@@ -45,8 +45,7 @@ Iris solves these problems by providing:
 ### SDK
 
 ```bash
-go get github.com/erikhoward/iris/core
-go get github.com/erikhoward/iris/providers
+go get github.com/erikhoward/iris
 ```
 
 ### CLI
