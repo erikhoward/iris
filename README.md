@@ -51,7 +51,7 @@ go get github.com/erikhoward/iris
 ### CLI
 
 ```bash
-go install github.com/erikhoward/iris/cli/cmd/iris@latest
+go install github.com/erikhoward/iris/cli/cmd/iris@v0.1.0
 ```
 
 ## Quick Start
@@ -240,7 +240,7 @@ graph TD
 ## Development
 
 ### Prerequisites
-- Go 1.21 or later
+- Go 1.24 or later
 
 ### Building
 
@@ -255,12 +255,17 @@ go test ./...
 go test -tags=integration ./tests/integration/...
 ```
 
-### Project Layout
+### Module Structure
 
-Iris uses Go workspaces to manage multiple modules:
+Iris uses a single Go module at the repository root. All packages are imported from `github.com/erikhoward/iris/*`:
 
-```bash
-go work use ./core ./providers ./tools ./agents ./cli ./tests
+```go
+import (
+    "github.com/erikhoward/iris/core"
+    "github.com/erikhoward/iris/providers/openai"
+    "github.com/erikhoward/iris/tools"
+    "github.com/erikhoward/iris/agents/graph"
+)
 ```
 
 ## License

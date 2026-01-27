@@ -4,7 +4,8 @@ This directory contains runnable examples demonstrating the Iris SDK features.
 
 ## Prerequisites
 
-Most examples require an OpenAI API key:
+- Go 1.24 or later
+- Most examples require an OpenAI API key:
 
 ```bash
 export OPENAI_API_KEY=your-api-key-here
@@ -73,19 +74,19 @@ go run main.go
 
 ## Running All Examples
 
-From the `examples` directory:
+From the project root directory:
 
 ```bash
 # Build all examples to check for compilation errors
-go build ./...
+go build ./examples/...
 
 # Run a specific example
-go run ./chat/basic
-go run ./chat/streaming
-go run ./chat/system-message
-go run ./chat/conversation
-go run ./tools/weather
-go run ./agents/simple
+go run ./examples/chat/basic
+go run ./examples/chat/streaming
+go run ./examples/chat/system-message
+go run ./examples/chat/conversation
+go run ./examples/tools/weather
+go run ./examples/agents/simple
 ```
 
 ## Example Output
