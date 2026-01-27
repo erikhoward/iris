@@ -22,6 +22,16 @@ func (m *mockProvider) ID() string {
 	return m.id
 }
 
+func (m *mockProvider) Models() []ModelInfo {
+	return []ModelInfo{
+		{ID: "mock-model", DisplayName: "Mock Model", Capabilities: []Feature{FeatureChat, FeatureChatStreaming}},
+	}
+}
+
+func (m *mockProvider) Supports(feature Feature) bool {
+	return feature == FeatureChat || feature == FeatureChatStreaming
+}
+
 func (m *mockProvider) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, error) {
 	m.mu.Lock()
 	m.callCount++

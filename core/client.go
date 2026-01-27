@@ -6,11 +6,17 @@ import (
 )
 
 // Provider is the interface that LLM providers must implement.
-// This minimal interface is defined here for Client use.
-// See providers package for full implementations.
+// Providers SHOULD be safe for concurrent calls.
+// If a provider cannot be concurrent-safe, it MUST document this.
 type Provider interface {
 	// ID returns the provider identifier (e.g., "openai", "anthropic").
 	ID() string
+
+	// Models returns the list of models available from this provider.
+	Models() []ModelInfo
+
+	// Supports reports whether the provider supports the given feature.
+	Supports(feature Feature) bool
 
 	// Chat sends a non-streaming chat request.
 	Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, error)
