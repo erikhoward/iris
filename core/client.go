@@ -19,18 +19,6 @@ type Provider interface {
 	StreamChat(ctx context.Context, req *ChatRequest) (*ChatStream, error)
 }
 
-// ChatStream represents a streaming response from a provider.
-type ChatStream struct {
-	// Ch receives incremental content chunks.
-	Ch <-chan ChatChunk
-
-	// Err receives any error that occurs during streaming.
-	Err <-chan error
-
-	// Final receives the complete response when streaming ends.
-	Final <-chan *ChatResponse
-}
-
 // Client is the main entry point for interacting with LLM providers.
 // Client is safe for concurrent use.
 type Client struct {
