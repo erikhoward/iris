@@ -2,7 +2,6 @@ package openai
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/erikhoward/iris/core"
@@ -86,9 +85,8 @@ func (p *OpenAI) Chat(ctx context.Context, req *core.ChatRequest) (*core.ChatRes
 }
 
 // StreamChat sends a streaming chat request.
-// Implementation in Task 11.
 func (p *OpenAI) StreamChat(ctx context.Context, req *core.ChatRequest) (*core.ChatStream, error) {
-	return nil, errors.New("not implemented")
+	return p.doStreamChat(ctx, req)
 }
 
 // Compile-time check that OpenAI implements Provider.
