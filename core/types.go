@@ -12,6 +12,23 @@ const (
 	FeatureToolCalling   Feature = "tool_calling"
 )
 
+// ModelInfo describes a model available from a provider.
+type ModelInfo struct {
+	ID           ModelID   `json:"id"`
+	DisplayName  string    `json:"display_name"`
+	Capabilities []Feature `json:"capabilities"`
+}
+
+// HasCapability reports whether the model supports the given feature.
+func (m ModelInfo) HasCapability(f Feature) bool {
+	for _, cap := range m.Capabilities {
+		if cap == f {
+			return true
+		}
+	}
+	return false
+}
+
 // ModelID is a string identifier for a model.
 // Using string avoids coupling to provider-specific enums.
 type ModelID string
