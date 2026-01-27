@@ -7,8 +7,16 @@ import (
 	"github.com/erikhoward/iris/cli/commands"
 )
 
+// ExitCoder is an interface for errors that have an exit code.
+type ExitCoder interface {
+	ExitCode() int
+}
+
 func main() {
 	if err := commands.Execute(); err != nil {
+		if ec, ok := err.(ExitCoder); ok {
+			os.Exit(ec.ExitCode())
+		}
 		os.Exit(1)
 	}
 }
