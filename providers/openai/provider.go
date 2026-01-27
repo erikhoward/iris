@@ -81,9 +81,8 @@ func (p *OpenAI) buildHeaders() http.Header {
 }
 
 // Chat sends a non-streaming chat request.
-// Implementation in Task 10.
 func (p *OpenAI) Chat(ctx context.Context, req *core.ChatRequest) (*core.ChatResponse, error) {
-	return nil, errors.New("not implemented")
+	return p.doChat(ctx, req)
 }
 
 // StreamChat sends a streaming chat request.
