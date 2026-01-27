@@ -213,14 +213,14 @@ nodes:
     type: llm
     config:
       model: gpt-4o
-  - id: end
+  - id: output
     type: output
 
 edges:
   - from: start
     to: process
   - from: process
-    to: end
+    to: output
 ```
 
 Export to Mermaid for visualization:
@@ -233,9 +233,9 @@ iris graph export agent.yaml
 graph TD
     start[start]
     process[process]
-    end[end]
+    output[output]
     start --> process
-    process --> end
+    process --> output
 ```
 
 ## Development
