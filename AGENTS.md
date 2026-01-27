@@ -422,71 +422,13 @@ This file is written for:
 
 ---
 
-## 12. Git Worktrees & Concurrent Development
-
-This project **requires** the use of Git worktrees for parallel feature development. Worktrees MUST be stored **outside** the main repository directory.
-
-### 12.1 Worktree Directory Convention
-
-All worktrees MUST be created under a sibling directory named:
-
-```
-../[project-name]-wt/
-```
-
-Each feature worktree MUST use the following structure:
-
-```
-../[project-name]-wt/feature-add-new-provider
-../[project-name]-wt/feat-42-add-new-embedder
-../[project-name]-wt/fix-17-streaming-deadlock
-```
-
-**Rules**
-
-* Worktrees MUST NOT be created inside the main project directory.
-* Each feature branch MUST have its own dedicated worktree.
-* The worktree folder name SHOULD match the branch name.
-
----
-
-### 12.2 Creating a Worktree
-
-Always start from a clean and up-to-date `main` branch.
-
-```
-git checkout main
-git pull origin main
-
-git worktree add ../iris-wt/feature-add-new-provider -b feature-add-new-provider
-```
-
-Then switch into the worktree directory and work normally:
-
-```
-cd ../iris-wt/feature-add-new-provider
-```
-
----
-
-### 12.3 Removing a Worktree
-
-**NEVER remove a worktree without explicit user approval.**
-
-If approved:
-
-```
-git worktree remove ../iris-wt/feature-add-new-provider
-```
-
----
-
 ## 13. Concurrent Sessions (MANDATORY)
 
 Multiple Claude sessions may be working on the same branch or worktree simultaneously. To avoid destroying other sessions' work, the following rules are **mandatory**.
 
 ### 13.1 File Safety Rules
 
+* ALWAYS create a new feature branch before starting to work on a new feature or bug-fix.
 * NEVER delete, reset, or discard files you did not create.
 * NEVER run `git reset`, `git checkout --`, or `git clean` without explicit user approval.
 * ALWAYS ask the user before removing untracked files.
@@ -496,6 +438,79 @@ Multiple Claude sessions may be working on the same branch or worktree simultane
 **Why this matters**
 
 The user may have multiple Claude sessions working in parallel on different aspects of a feature. Deleting unknown files destroys that work.
+
+---
+
+## 13.2 Feature/Bugfix Workflow (MANDATORY)
+
+When working on a feature or bug fix, ALWAYS follow this workflow.
+
+### 13.3 Create a Feature/Fix Branch
+
+```
+git checkout main
+git pull origin main
+git checkout -b <type>/<short-description>
+
+# Example:
+# feat/42-add-new-embedder
+```
+
+---
+
+## 13.4 Task Workflow (MANDATORY)
+
+When working on tasks, ALWAYS follow this workflow.
+
+### 13.5 Pre-Flight Checks (MANDATORY)
+
+* The task is identified by a file under `.spec/tasks`
+* Verify the task has not been completed by looking at completed tasks under `.spec/completed`
+* The agent has read the ENTIRE task file
+* Clean working tree (no accidental edits). STOP if not clean
+* Install dependencies
+
+### 13.6 Task Completion (MANDATORY)
+
+Every completed task must be documented in a file under `.spec/completed`.
+
+Use the following template to document task completion
+
+```markdown
+## ✅ [TASK-ID] - [TASK NAME]
+**Completed On**: YYYY-mm-dd
+**Completed By**: [person or agent]
+**Source Task**: `.spec/tasks/IRIS-T0021-ollama-provider.md`
+**Related PR/Commit**: [COMMIT or PR]
+
+### Scope
+
+Implemented Ollma provider support...
+
+**Backend Changes**:
+
+* List of all backend changes
+
+**Frontend Changes**:
+
+* List of all frontend changes
+
+### Verification
+
+Commands executed to verify feature acceptance
+
+### Deviations
+
+* User-approved support for optional provider implementation
+
+### Files Created:
+
+* src/internal/provider/ollama.go
+
+### Files Modified:
+
+* src/internal/core/types.go - Added 1 provider enum and 3 model enums
+```
 
 ---
 
