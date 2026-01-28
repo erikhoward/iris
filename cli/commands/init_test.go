@@ -64,6 +64,7 @@ func TestDefaultModel(t *testing.T) {
 	}{
 		{"openai", "gpt-4o"},
 		{"anthropic", "claude-sonnet-4-5"},
+		{"gemini", "gemini-2.5-flash"},
 		{"unknown", "default"},
 	}
 

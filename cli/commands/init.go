@@ -159,6 +159,8 @@ func defaultModel(provider string) string {
 		return "gpt-4o"
 	case "anthropic":
 		return "claude-sonnet-4-5"
+	case "gemini":
+		return "gemini-2.5-flash"
 	default:
 		return "default"
 	}

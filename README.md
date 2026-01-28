@@ -13,7 +13,7 @@ Building AI applications often requires:
 - Creating reusable agent workflows
 
 Iris solves these problems by providing:
-- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, with more coming)
+- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, Google Gemini)
 - **Fluent Builder Pattern**: Intuitive, chainable API for constructing requests
 - **Built-in Streaming**: First-class support for streaming responses with proper channel handling
 - **Secure Key Management**: Encrypted local storage for API keys
@@ -133,6 +133,57 @@ func main() {
 }
 ```
 
+### Using Google Gemini
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/erikhoward/iris/core"
+    "github.com/erikhoward/iris/providers/gemini"
+)
+
+func main() {
+    // Create a Gemini provider
+    provider := gemini.New(os.Getenv("GEMINI_API_KEY"))
+
+    // Create a client
+    client := core.NewClient(provider)
+
+    // Send a chat request
+    resp, err := client.Chat("gemini-2.5-flash").
+        System("You are a helpful assistant.").
+        User("What is the capital of France?").
+        GetResponse(context.Background())
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error:", err)
+        os.Exit(1)
+    }
+
+    fmt.Println(resp.Output)
+}
+```
+
+Gemini models with thinking/reasoning support:
+
+```go
+// Use reasoning with Gemini 2.5 models (budget-based)
+resp, err := client.Chat("gemini-2.5-pro").
+    User("Solve this complex problem step by step").
+    ReasoningEffort(core.ReasoningEffortHigh).
+    GetResponse(ctx)
+
+// Access reasoning if available
+if resp.Reasoning != nil && resp.Reasoning.Output != "" {
+    fmt.Println("Thinking:", resp.Reasoning.Output)
+}
+```
+
 ### Streaming Responses
 
 ```go
@@ -212,12 +263,16 @@ followUp, err := client.Chat("gpt-5").
 # Set up your API key (stored encrypted)
 iris keys set openai
 iris keys set anthropic
+iris keys set gemini
 
 # Chat with OpenAI
 iris chat --provider openai --model gpt-4o --prompt "Hello, world!"
 
 # Chat with Anthropic Claude
 iris chat --provider anthropic --model claude-sonnet-4-5 --prompt "Hello, world!"
+
+# Chat with Google Gemini
+iris chat --provider gemini --model gemini-2.5-flash --prompt "Hello, world!"
 
 # Chat with GPT-5 (uses Responses API automatically)
 iris chat --provider openai --model gpt-5 --prompt "Explain quantum entanglement"
@@ -243,7 +298,8 @@ iris/
 ├── core/           # Core SDK types and client
 ├── providers/      # LLM provider implementations
 │   ├── openai/     # OpenAI provider
-│   └── anthropic/  # Anthropic Claude provider
+│   ├── anthropic/  # Anthropic Claude provider
+│   └── gemini/     # Google Gemini provider
 ├── tools/          # Tool/function calling framework
 ├── agents/         # Agent graph framework
 │   └── graph/      # Graph execution engine
@@ -268,6 +324,8 @@ providers:
     api_key_env: OPENAI_API_KEY
   anthropic:
     api_key_env: ANTHROPIC_API_KEY
+  gemini:
+    api_key_env: GEMINI_API_KEY
 ```
 
 ## Supported Providers
@@ -276,7 +334,18 @@ providers:
 |----------|--------|----------|
 | OpenAI | Supported | Chat, Streaming, Tools, Responses API (GPT-5+) |
 | Anthropic | Supported | Chat, Streaming, Tools |
+| Google Gemini | Supported | Chat, Streaming, Tools, Reasoning |
 | Ollama | Planned | - |
+
+### Gemini Models
+
+| Model ID | Features |
+|----------|----------|
+| `gemini-3-pro-preview` | Chat, Streaming, Tools, Reasoning (thinkingLevel) |
+| `gemini-3-flash-preview` | Chat, Streaming, Tools, Reasoning (thinkingLevel) |
+| `gemini-2.5-pro` | Chat, Streaming, Tools, Reasoning (thinkingBudget) |
+| `gemini-2.5-flash` | Chat, Streaming, Tools, Reasoning (thinkingBudget) |
+| `gemini-2.5-flash-lite` | Chat, Streaming, Tools, Reasoning (thinkingBudget) |
 
 ## Agent Graphs
 
@@ -347,6 +416,7 @@ import (
     "github.com/erikhoward/iris/core"
     "github.com/erikhoward/iris/providers/openai"
     "github.com/erikhoward/iris/providers/anthropic"
+    "github.com/erikhoward/iris/providers/gemini"
     "github.com/erikhoward/iris/tools"
     "github.com/erikhoward/iris/agents/graph"
 )

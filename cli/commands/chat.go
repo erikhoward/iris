@@ -10,6 +10,7 @@ import (
 	"github.com/erikhoward/iris/cli/keystore"
 	"github.com/erikhoward/iris/core"
 	"github.com/erikhoward/iris/providers/anthropic"
+	"github.com/erikhoward/iris/providers/gemini"
 	"github.com/erikhoward/iris/providers/openai"
 	"github.com/spf13/cobra"
 )
@@ -208,6 +209,15 @@ func createProvider(providerID, apiKey string) (core.Provider, error) {
 			}
 		}
 		return anthropic.New(apiKey, opts...), nil
+	case "gemini":
+		// Check for custom base URL in config
+		var opts []gemini.Option
+		if cfg := GetConfig(); cfg != nil {
+			if pc := cfg.GetProvider(providerID); pc != nil && pc.BaseURL != "" {
+				opts = append(opts, gemini.WithBaseURL(pc.BaseURL))
+			}
+		}
+		return gemini.New(apiKey, opts...), nil
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", providerID)
 	}
