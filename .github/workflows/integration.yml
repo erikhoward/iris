@@ -1,0 +1,31 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: "0 2 * * *"
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    environment: CI
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache: true
+
+      - name: Run integration tests
+        env:
+          IRIS_OPENAI_API_KEY: ${{ secrets.IRIS_OPENAI_API_KEY }}
+          IRIS_ANTHROPIC_API_KEY: ${{ secrets.IRIS_ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$IRIS_OPENAI_API_KEY" ]; then
+            echo "Missing IRIS_OPENAI_API_KEY; skipping integration tests."
+            exit 0
+          fi
+          go test -tags=integration ./tests/integration/... -count=1 -v

@@ -8,11 +8,11 @@ import (
 
 var (
 	// Global flags
-	cfgFile     string
-	provider    string
-	model       string
-	jsonOutput  bool
-	verbose     bool
+	cfgFile    string
+	provider   string
+	model      string
+	jsonOutput bool
+	verbose    bool
 
 	// Loaded configuration
 	cfg *config.Config

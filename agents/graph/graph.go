@@ -7,11 +7,11 @@ import (
 
 // Graph validation errors.
 var (
-	ErrNodeExists       = errors.New("node already exists")
-	ErrNodeNotFound     = errors.New("node not found")
-	ErrNoEntry          = errors.New("entry node not set")
-	ErrEntryNotFound    = errors.New("entry node not found")
-	ErrOrphanNode       = errors.New("orphan node detected")
+	ErrNodeExists         = errors.New("node already exists")
+	ErrNodeNotFound       = errors.New("node not found")
+	ErrNoEntry            = errors.New("entry node not set")
+	ErrEntryNotFound      = errors.New("entry node not found")
+	ErrOrphanNode         = errors.New("orphan node detected")
 	ErrEdgeTargetNotFound = errors.New("edge target not found")
 )
 

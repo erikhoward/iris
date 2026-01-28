@@ -6,9 +6,9 @@ import "github.com/erikhoward/iris/core"
 // Model constants for OpenAI models.
 const (
 	// GPT-5.2 series
-	ModelGPT52        core.ModelID = "gpt-5.2"
-	ModelGPT52Pro     core.ModelID = "gpt-5.2-pro"
-	ModelGPT52Codex   core.ModelID = "gpt-5.2-codex"
+	ModelGPT52      core.ModelID = "gpt-5.2"
+	ModelGPT52Pro   core.ModelID = "gpt-5.2-pro"
+	ModelGPT52Codex core.ModelID = "gpt-5.2-codex"
 
 	// GPT-5.1 series
 	ModelGPT51          core.ModelID = "gpt-5.1"
@@ -17,11 +17,11 @@ const (
 	ModelGPT51CodexMax  core.ModelID = "gpt-5.1-codex-max"
 
 	// GPT-5 series
-	ModelGPT5       core.ModelID = "gpt-5"
-	ModelGPT5Mini   core.ModelID = "gpt-5-mini"
-	ModelGPT5Nano   core.ModelID = "gpt-5-nano"
-	ModelGPT5Pro    core.ModelID = "gpt-5-pro"
-	ModelGPT5Codex  core.ModelID = "gpt-5-codex"
+	ModelGPT5      core.ModelID = "gpt-5"
+	ModelGPT5Mini  core.ModelID = "gpt-5-mini"
+	ModelGPT5Nano  core.ModelID = "gpt-5-nano"
+	ModelGPT5Pro   core.ModelID = "gpt-5-pro"
+	ModelGPT5Codex core.ModelID = "gpt-5-codex"
 
 	// GPT-4.1 series
 	ModelGPT41     core.ModelID = "gpt-4.1"
@@ -37,8 +37,8 @@ const (
 	ModelGPT4      core.ModelID = "gpt-4"
 
 	// GPT-3.5 series
-	ModelGPT35Turbo        core.ModelID = "gpt-3.5-turbo"
-	ModelGPT35Turbo16k     core.ModelID = "gpt-3.5-turbo-16k"
+	ModelGPT35Turbo         core.ModelID = "gpt-3.5-turbo"
+	ModelGPT35Turbo16k      core.ModelID = "gpt-3.5-turbo-16k"
 	ModelGPT35TurboInstruct core.ModelID = "gpt-3.5-turbo-instruct"
 
 	// Reasoning models (o-series)

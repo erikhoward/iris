@@ -130,5 +130,5 @@ func main() {
 	fmt.Println()
 	fmt.Println("=== Execution Complete ===")
 	fmt.Printf("Final state has %d values\n", 5) // We know we set 5 values
-	_ = finalState // Use the final state if needed
+	_ = finalState                               // Use the final state if needed
 }

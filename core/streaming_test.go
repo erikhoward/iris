@@ -231,8 +231,8 @@ func TestChatStreamTypeHasCorrectChannelDirections(t *testing.T) {
 	finalCh := make(chan *ChatResponse)
 
 	stream := &ChatStream{
-		Ch:    ch,    // receive-only in struct
-		Err:   errCh, // receive-only in struct
+		Ch:    ch,      // receive-only in struct
+		Err:   errCh,   // receive-only in struct
 		Final: finalCh, // receive-only in struct
 	}
 

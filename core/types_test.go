@@ -7,9 +7,9 @@ import (
 
 func TestMessageJSONMarshal(t *testing.T) {
 	tests := []struct {
-		name    string
-		msg     Message
-		want    string
+		name string
+		msg  Message
+		want string
 	}{
 		{
 			name: "system role",

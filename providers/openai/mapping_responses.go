@@ -168,7 +168,7 @@ func mapResponsesResponse(resp *responsesResponse) (*core.ChatResponse, error) {
 		switch item.Type {
 		case "message":
 			// Extract text content from message
-			for _, content := range item.MessageContent {
+			for _, content := range item.Content {
 				if content.Type == "output_text" || content.Type == "text" {
 					if result.Output == "" {
 						result.Output = content.Text

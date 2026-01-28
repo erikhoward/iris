@@ -34,10 +34,10 @@ type openAIStreamDelta struct {
 }
 
 type openAIStreamToolCall struct {
-	Index    int                    `json:"index"`
-	ID       string                 `json:"id,omitempty"`
-	Type     string                 `json:"type,omitempty"`
-	Function openAIStreamFunction   `json:"function,omitempty"`
+	Index    int                  `json:"index"`
+	ID       string               `json:"id,omitempty"`
+	Type     string               `json:"type,omitempty"`
+	Function openAIStreamFunction `json:"function,omitempty"`
 }
 
 type openAIStreamFunction struct {

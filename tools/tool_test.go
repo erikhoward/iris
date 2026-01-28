@@ -17,10 +17,12 @@ type mockTool struct {
 	callFn      func(ctx context.Context, args json.RawMessage) (any, error)
 }
 
-func (m *mockTool) Name() string                                              { return m.name }
-func (m *mockTool) Description() string                                       { return m.description }
-func (m *mockTool) Schema() tools.ToolSchema                                  { return m.schema }
-func (m *mockTool) Call(ctx context.Context, args json.RawMessage) (any, error) { return m.callFn(ctx, args) }
+func (m *mockTool) Name() string             { return m.name }
+func (m *mockTool) Description() string      { return m.description }
+func (m *mockTool) Schema() tools.ToolSchema { return m.schema }
+func (m *mockTool) Call(ctx context.Context, args json.RawMessage) (any, error) {
+	return m.callFn(ctx, args)
+}
 
 func TestToolInterfaceCanBeImplemented(t *testing.T) {
 	tool := &mockTool{

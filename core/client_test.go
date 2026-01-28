@@ -10,12 +10,12 @@ import (
 
 // mockProvider is a test implementation of Provider.
 type mockProvider struct {
-	id           string
-	chatFunc     func(ctx context.Context, req *ChatRequest) (*ChatResponse, error)
-	streamFunc   func(ctx context.Context, req *ChatRequest) (*ChatStream, error)
-	callCount    int
-	lastRequest  *ChatRequest
-	mu           sync.Mutex
+	id          string
+	chatFunc    func(ctx context.Context, req *ChatRequest) (*ChatResponse, error)
+	streamFunc  func(ctx context.Context, req *ChatRequest) (*ChatStream, error)
+	callCount   int
+	lastRequest *ChatRequest
+	mu          sync.Mutex
 }
 
 func (m *mockProvider) ID() string {

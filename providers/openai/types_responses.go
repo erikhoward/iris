@@ -82,17 +82,16 @@ type incompleteInfo struct {
 // responsesOutput represents an output item in a Responses API response.
 // The Type field determines which other fields are populated.
 type responsesOutput struct {
-	Type    string `json:"type"` // "reasoning", "message", "function_call"
-	ID      string `json:"id,omitempty"`
-	Status  string `json:"status,omitempty"`
-	Role    string `json:"role,omitempty"`
-	Content string `json:"content,omitempty"`
+	Type   string `json:"type"` // "reasoning", "message", "function_call"
+	ID     string `json:"id,omitempty"`
+	Status string `json:"status,omitempty"`
+	Role   string `json:"role,omitempty"`
 
 	// For reasoning type
 	Summary []responsesReasoningSummary `json:"summary,omitempty"`
 
 	// For message type
-	MessageContent []responsesMessageContent `json:"content,omitempty"`
+	Content []responsesMessageContent `json:"content,omitempty"`
 
 	// For function_call type
 	CallID    string `json:"call_id,omitempty"`
@@ -114,9 +113,9 @@ type responsesMessageContent struct {
 
 // responsesUsage tracks token usage for a Responses API request.
 type responsesUsage struct {
-	InputTokens   int `json:"input_tokens"`
-	OutputTokens  int `json:"output_tokens"`
-	TotalTokens   int `json:"total_tokens"`
+	InputTokens     int `json:"input_tokens"`
+	OutputTokens    int `json:"output_tokens"`
+	TotalTokens     int `json:"total_tokens"`
 	ReasoningTokens int `json:"reasoning_tokens,omitempty"`
 }
 

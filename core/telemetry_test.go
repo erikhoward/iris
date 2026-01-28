@@ -184,19 +184,19 @@ func TestTelemetryHookReceivesEvents(t *testing.T) {
 func TestEventStructsHaveNoSecretFields(t *testing.T) {
 	// RequestStartEvent should only have safe fields
 	_ = RequestStartEvent{
-		Provider: "test",  // safe: provider name
-		Model:    "model", // safe: model identifier
+		Provider: "test",     // safe: provider name
+		Model:    "model",    // safe: model identifier
 		Start:    time.Now(), // safe: timestamp
 	}
 
 	// RequestEndEvent should only have safe fields
 	_ = RequestEndEvent{
-		Provider: "test",     // safe: provider name
-		Model:    "model",    // safe: model identifier
-		Start:    time.Now(), // safe: timestamp
-		End:      time.Now(), // safe: timestamp
+		Provider: "test",       // safe: provider name
+		Model:    "model",      // safe: model identifier
+		Start:    time.Now(),   // safe: timestamp
+		End:      time.Now(),   // safe: timestamp
 		Usage:    TokenUsage{}, // safe: token counts only
-		Err:      nil,        // safe: error type (not content)
+		Err:      nil,          // safe: error type (not content)
 	}
 
 	// If this test compiles, the structs don't have fields like:

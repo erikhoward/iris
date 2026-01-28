@@ -44,9 +44,9 @@ type openAIResponse struct {
 
 // openAIChoice represents a single choice in an OpenAI response.
 type openAIChoice struct {
-	Index        int              `json:"index"`
-	Message      openAIRespMsg    `json:"message"`
-	FinishReason string           `json:"finish_reason"`
+	Index        int           `json:"index"`
+	Message      openAIRespMsg `json:"message"`
+	FinishReason string        `json:"finish_reason"`
 }
 
 // openAIRespMsg represents the assistant message in a response.

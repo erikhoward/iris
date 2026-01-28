@@ -220,4 +220,3 @@ providers:
   {{.Provider}}:
     api_key_env: {{.Provider | envVar}}
 `
-
