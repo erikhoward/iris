@@ -15,7 +15,7 @@ Building AI applications often requires:
 - Creating reusable agent workflows
 
 Iris solves these problems by providing:
-- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, Google Gemini)
+- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, Google Gemini, xAI Grok)
 - **Fluent Builder Pattern**: Intuitive, chainable API for constructing requests
 - **Built-in Streaming**: First-class support for streaming responses with proper channel handling
 - **Secure Key Management**: Encrypted local storage for API keys
@@ -186,6 +186,57 @@ if resp.Reasoning != nil && resp.Reasoning.Output != "" {
 }
 ```
 
+### Using xAI Grok
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/erikhoward/iris/core"
+    "github.com/erikhoward/iris/providers/xai"
+)
+
+func main() {
+    // Create an xAI provider
+    provider := xai.New(os.Getenv("XAI_API_KEY"))
+
+    // Create a client
+    client := core.NewClient(provider)
+
+    // Send a chat request using Grok 4
+    resp, err := client.Chat(xai.ModelGrok4).
+        System("You are a helpful assistant.").
+        User("What is the capital of France?").
+        GetResponse(context.Background())
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error:", err)
+        os.Exit(1)
+    }
+
+    fmt.Println(resp.Output)
+}
+```
+
+xAI Grok models with reasoning support:
+
+```go
+// Use reasoning with grok-3-mini (only model that exposes reasoning_content)
+resp, err := client.Chat(xai.ModelGrok3Mini).
+    User("Solve this step by step: If I have 5 apples and give away half...").
+    ReasoningEffort(core.ReasoningEffortHigh).
+    GetResponse(ctx)
+
+// Access reasoning if available (grok-3-mini only)
+if resp.Reasoning != nil && len(resp.Reasoning.Summary) > 0 {
+    fmt.Println("Thinking:", resp.Reasoning.Summary[0])
+}
+```
+
 ### Streaming Responses
 
 ```go
@@ -266,6 +317,7 @@ followUp, err := client.Chat("gpt-5").
 iris keys set openai
 iris keys set anthropic
 iris keys set gemini
+iris keys set xai
 
 # Chat with OpenAI
 iris chat --provider openai --model gpt-4o --prompt "Hello, world!"
@@ -275,6 +327,9 @@ iris chat --provider anthropic --model claude-sonnet-4-5 --prompt "Hello, world!
 
 # Chat with Google Gemini
 iris chat --provider gemini --model gemini-2.5-flash --prompt "Hello, world!"
+
+# Chat with xAI Grok
+iris chat --provider xai --model grok-4 --prompt "Hello, world!"
 
 # Chat with GPT-5 (uses Responses API automatically)
 iris chat --provider openai --model gpt-5 --prompt "Explain quantum entanglement"
@@ -301,7 +356,8 @@ iris/
 ├── providers/      # LLM provider implementations
 │   ├── openai/     # OpenAI provider
 │   ├── anthropic/  # Anthropic Claude provider
-│   └── gemini/     # Google Gemini provider
+│   ├── gemini/     # Google Gemini provider
+│   └── xai/        # xAI Grok provider
 ├── tools/          # Tool/function calling framework
 ├── agents/         # Agent graph framework
 │   └── graph/      # Graph execution engine
@@ -328,6 +384,8 @@ providers:
     api_key_env: ANTHROPIC_API_KEY
   gemini:
     api_key_env: GEMINI_API_KEY
+  xai:
+    api_key_env: XAI_API_KEY
 ```
 
 ## Supported Providers
@@ -337,7 +395,21 @@ providers:
 | OpenAI | Supported | Chat, Streaming, Tools, Responses API (GPT-5+) |
 | Anthropic | Supported | Chat, Streaming, Tools |
 | Google Gemini | Supported | Chat, Streaming, Tools, Reasoning |
+| xAI Grok | Supported | Chat, Streaming, Tools, Reasoning |
 | Ollama | Planned | - |
+
+### xAI Grok Models
+
+| Model ID | Features |
+|----------|----------|
+| `grok-3` | Chat, Streaming, Tools, Reasoning |
+| `grok-3-mini` | Chat, Streaming, Tools, Reasoning (exposes reasoning_content) |
+| `grok-4` | Chat, Streaming, Tools, Reasoning (latest) |
+| `grok-4-fast-non-reasoning` | Chat, Streaming, Tools |
+| `grok-4-fast-reasoning` | Chat, Streaming, Tools, Reasoning |
+| `grok-code-fast` | Chat, Streaming, Tools (code-optimized) |
+| `grok-4-1-fast-non-reasoning` | Chat, Streaming, Tools (default for CLI) |
+| `grok-4-1-fast-reasoning` | Chat, Streaming, Tools, Reasoning |
 
 ### Gemini Models
 
@@ -419,6 +491,7 @@ import (
     "github.com/erikhoward/iris/providers/openai"
     "github.com/erikhoward/iris/providers/anthropic"
     "github.com/erikhoward/iris/providers/gemini"
+    "github.com/erikhoward/iris/providers/xai"
     "github.com/erikhoward/iris/tools"
     "github.com/erikhoward/iris/agents/graph"
 )

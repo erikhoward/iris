@@ -161,6 +161,8 @@ func defaultModel(provider string) string {
 		return "claude-sonnet-4-5"
 	case "gemini":
 		return "gemini-2.5-flash"
+	case "xai":
+		return "grok-4-1-fast-non-reasoning"
 	default:
 		return "default"
 	}

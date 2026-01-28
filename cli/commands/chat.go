@@ -12,6 +12,7 @@ import (
 	"github.com/erikhoward/iris/providers/anthropic"
 	"github.com/erikhoward/iris/providers/gemini"
 	"github.com/erikhoward/iris/providers/openai"
+	"github.com/erikhoward/iris/providers/xai"
 	"github.com/spf13/cobra"
 )
 
@@ -218,6 +219,15 @@ func createProvider(providerID, apiKey string) (core.Provider, error) {
 			}
 		}
 		return gemini.New(apiKey, opts...), nil
+	case "xai":
+		// Check for custom base URL in config
+		var opts []xai.Option
+		if cfg := GetConfig(); cfg != nil {
+			if pc := cfg.GetProvider(providerID); pc != nil && pc.BaseURL != "" {
+				opts = append(opts, xai.WithBaseURL(pc.BaseURL))
+			}
+		}
+		return xai.New(apiKey, opts...), nil
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", providerID)
 	}
