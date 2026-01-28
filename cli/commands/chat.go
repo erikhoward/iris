@@ -9,6 +9,7 @@ import (
 
 	"github.com/erikhoward/iris/cli/keystore"
 	"github.com/erikhoward/iris/core"
+	"github.com/erikhoward/iris/providers/anthropic"
 	"github.com/erikhoward/iris/providers/openai"
 	"github.com/spf13/cobra"
 )
@@ -198,6 +199,15 @@ func createProvider(providerID, apiKey string) (core.Provider, error) {
 			}
 		}
 		return openai.New(apiKey, opts...), nil
+	case "anthropic":
+		// Check for custom base URL in config
+		var opts []anthropic.Option
+		if cfg := GetConfig(); cfg != nil {
+			if pc := cfg.GetProvider(providerID); pc != nil && pc.BaseURL != "" {
+				opts = append(opts, anthropic.WithBaseURL(pc.BaseURL))
+			}
+		}
+		return anthropic.New(apiKey, opts...), nil
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", providerID)
 	}

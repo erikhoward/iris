@@ -13,7 +13,7 @@ Building AI applications often requires:
 - Creating reusable agent workflows
 
 Iris solves these problems by providing:
-- **Unified SDK**: A consistent Go API across providers (OpenAI, with more coming)
+- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, with more coming)
 - **Fluent Builder Pattern**: Intuitive, chainable API for constructing requests
 - **Built-in Streaming**: First-class support for streaming responses with proper channel handling
 - **Secure Key Management**: Encrypted local storage for API keys
@@ -97,6 +97,42 @@ func main() {
 }
 ```
 
+### Using Anthropic Claude
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/erikhoward/iris/core"
+    "github.com/erikhoward/iris/providers/anthropic"
+)
+
+func main() {
+    // Create an Anthropic provider
+    provider := anthropic.New(os.Getenv("ANTHROPIC_API_KEY"))
+
+    // Create a client
+    client := core.NewClient(provider)
+
+    // Send a chat request
+    resp, err := client.Chat("claude-sonnet-4-5").
+        System("You are a helpful assistant.").
+        User("What is the capital of France?").
+        GetResponse(context.Background())
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error:", err)
+        os.Exit(1)
+    }
+
+    fmt.Println(resp.Output)
+}
+```
+
 ### Streaming Responses
 
 ```go
@@ -175,18 +211,20 @@ followUp, err := client.Chat("gpt-5").
 ```bash
 # Set up your API key (stored encrypted)
 iris keys set openai
+iris keys set anthropic
 
-# Chat with a model
+# Chat with OpenAI
 iris chat --provider openai --model gpt-4o --prompt "Hello, world!"
+
+# Chat with Anthropic Claude
+iris chat --provider anthropic --model claude-sonnet-4-5 --prompt "Hello, world!"
 
 # Chat with GPT-5 (uses Responses API automatically)
 iris chat --provider openai --model gpt-5 --prompt "Explain quantum entanglement"
 
 # Stream responses
 iris chat --provider openai --model gpt-4o --prompt "Tell me a story" --stream
-
-# Stream with GPT-5
-iris chat --provider openai --model gpt-5 --prompt "Write a poem about AI" --stream
+iris chat --provider anthropic --model claude-sonnet-4-5 --prompt "Tell me a story" --stream
 
 # Get JSON output
 iris chat --provider openai --model gpt-4o --prompt "Hello" --json
@@ -204,7 +242,8 @@ iris graph export agent.yaml --format mermaid
 iris/
 ├── core/           # Core SDK types and client
 ├── providers/      # LLM provider implementations
-│   └── openai/     # OpenAI provider
+│   ├── openai/     # OpenAI provider
+│   └── anthropic/  # Anthropic Claude provider
 ├── tools/          # Tool/function calling framework
 ├── agents/         # Agent graph framework
 │   └── graph/      # Graph execution engine
@@ -227,6 +266,8 @@ default_model: gpt-5  # or gpt-4o for older models
 providers:
   openai:
     api_key_env: OPENAI_API_KEY
+  anthropic:
+    api_key_env: ANTHROPIC_API_KEY
 ```
 
 ## Supported Providers
@@ -234,7 +275,7 @@ providers:
 | Provider | Status | Features |
 |----------|--------|----------|
 | OpenAI | Supported | Chat, Streaming, Tools, Responses API (GPT-5+) |
-| Anthropic | Planned | - |
+| Anthropic | Supported | Chat, Streaming, Tools |
 | Ollama | Planned | - |
 
 ## Agent Graphs
@@ -305,6 +346,7 @@ Iris uses a single Go module at the repository root. All packages are imported f
 import (
     "github.com/erikhoward/iris/core"
     "github.com/erikhoward/iris/providers/openai"
+    "github.com/erikhoward/iris/providers/anthropic"
     "github.com/erikhoward/iris/tools"
     "github.com/erikhoward/iris/agents/graph"
 )
