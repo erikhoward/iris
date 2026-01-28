@@ -631,8 +631,37 @@ graph TD
 
 ### Prerequisites
 - Go 1.24 or later
+- Make (optional, for using Makefile commands)
 
-### Building
+### Getting Started
+
+```bash
+# Clone the repository
+git clone https://github.com/erikhoward/iris.git
+cd iris
+
+# Install git hooks (recommended - prevents formatting issues)
+make install-hooks
+# or: ./scripts/setup-hooks.sh
+```
+
+### Makefile Commands
+
+```bash
+make build        # Build all packages
+make test         # Run all tests
+make test-v       # Run tests with verbose output
+make test-cover   # Run tests with coverage
+make lint         # Check formatting and run go vet
+make fmt          # Auto-fix formatting issues
+make vet          # Run go vet
+make install-hooks # Install git pre-commit hooks
+make build-cli    # Build CLI to bin/iris
+make install-cli  # Install CLI locally
+make help         # Show all available commands
+```
+
+### Building (without Make)
 
 ```bash
 # Build everything
@@ -641,9 +670,28 @@ go build ./...
 # Run tests
 go test ./...
 
+# Check formatting
+gofmt -l .
+
+# Fix formatting
+gofmt -w .
+
 # Run integration tests (requires IRIS_OPENAI_API_KEY)
 go test -tags=integration ./tests/integration/...
 ```
+
+### Git Hooks
+
+The repository includes a pre-commit hook that automatically checks:
+- `gofmt` - Ensures all Go files are properly formatted
+- `go vet` - Catches common mistakes
+
+Install the hooks after cloning:
+```bash
+make install-hooks
+```
+
+This prevents CI failures due to formatting issues.
 
 ### Module Structure
 
