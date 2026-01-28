@@ -11,6 +11,7 @@ import (
 	"github.com/erikhoward/iris/core"
 	"github.com/erikhoward/iris/providers/anthropic"
 	"github.com/erikhoward/iris/providers/gemini"
+	"github.com/erikhoward/iris/providers/ollama"
 	"github.com/erikhoward/iris/providers/openai"
 	"github.com/erikhoward/iris/providers/xai"
 	"github.com/erikhoward/iris/providers/zai"
@@ -238,6 +239,19 @@ func createProvider(providerID, apiKey string) (core.Provider, error) {
 			}
 		}
 		return zai.New(apiKey, opts...), nil
+	case "ollama":
+		// Check for custom base URL in config
+		var opts []ollama.Option
+		if cfg := GetConfig(); cfg != nil {
+			if pc := cfg.GetProvider(providerID); pc != nil && pc.BaseURL != "" {
+				opts = append(opts, ollama.WithBaseURL(pc.BaseURL))
+			}
+		}
+		// API key is optional for local Ollama
+		if apiKey != "" {
+			opts = append(opts, ollama.WithAPIKey(apiKey))
+		}
+		return ollama.New(opts...), nil
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", providerID)
 	}

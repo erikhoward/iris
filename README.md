@@ -15,7 +15,7 @@ Building AI applications often requires:
 - Creating reusable agent workflows
 
 Iris solves these problems by providing:
-- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, Google Gemini, xAI Grok, Z.ai GLM)
+- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, Google Gemini, xAI Grok, Z.ai GLM, Ollama)
 - **Fluent Builder Pattern**: Intuitive, chainable API for constructing requests
 - **Built-in Streaming**: First-class support for streaming responses with proper channel handling
 - **Secure Key Management**: Encrypted local storage for API keys
@@ -288,6 +288,66 @@ if resp.Reasoning != nil && len(resp.Reasoning.Summary) > 0 {
 }
 ```
 
+### Using Ollama
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/erikhoward/iris/core"
+    "github.com/erikhoward/iris/providers/ollama"
+)
+
+func main() {
+    // Create a local Ollama provider (no API key needed)
+    provider := ollama.New()
+
+    // Or connect to a remote Ollama instance:
+    // provider := ollama.New(ollama.WithBaseURL("http://remote-host:11434"))
+
+    // Or use Ollama Cloud:
+    // provider := ollama.New(
+    //     ollama.WithCloud(),
+    //     ollama.WithAPIKey(os.Getenv("OLLAMA_API_KEY")),
+    // )
+
+    // Create a client
+    client := core.NewClient(provider)
+
+    // Send a chat request - use any model you have pulled
+    resp, err := client.Chat("llama3.2").
+        System("You are a helpful assistant.").
+        User("What is the capital of France?").
+        GetResponse(context.Background())
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error:", err)
+        os.Exit(1)
+    }
+
+    fmt.Println(resp.Output)
+}
+```
+
+Ollama models with thinking support:
+
+```go
+// Use thinking with models like qwen3
+resp, err := client.Chat("qwen3").
+    User("Solve this step by step: What is 15% of 240?").
+    ReasoningEffort(core.ReasoningEffortHigh).
+    GetResponse(ctx)
+
+// Access reasoning if available
+if resp.Reasoning != nil && len(resp.Reasoning.Summary) > 0 {
+    fmt.Println("Thinking:", resp.Reasoning.Summary[0])
+}
+```
+
 ### Streaming Responses
 
 ```go
@@ -370,6 +430,7 @@ iris keys set anthropic
 iris keys set gemini
 iris keys set xai
 iris keys set zai
+iris keys set ollama  # Only needed for Ollama Cloud
 
 # Chat with OpenAI
 iris chat --provider openai --model gpt-4o --prompt "Hello, world!"
@@ -385,6 +446,9 @@ iris chat --provider xai --model grok-4 --prompt "Hello, world!"
 
 # Chat with Z.ai GLM
 iris chat --provider zai --model glm-4.7-flash --prompt "Hello, world!"
+
+# Chat with local Ollama (no API key needed)
+iris chat --provider ollama --model llama3.2 --prompt "Hello, world!"
 
 # Chat with GPT-5 (uses Responses API automatically)
 iris chat --provider openai --model gpt-5 --prompt "Explain quantum entanglement"
@@ -413,7 +477,8 @@ iris/
 │   ├── anthropic/  # Anthropic Claude provider
 │   ├── gemini/     # Google Gemini provider
 │   ├── xai/        # xAI Grok provider
-│   └── zai/        # Z.ai GLM provider
+│   ├── zai/        # Z.ai GLM provider
+│   └── ollama/     # Ollama provider (local and cloud)
 ├── tools/          # Tool/function calling framework
 ├── agents/         # Agent graph framework
 │   └── graph/      # Graph execution engine
@@ -444,6 +509,10 @@ providers:
     api_key_env: XAI_API_KEY
   zai:
     api_key_env: ZAI_API_KEY
+  ollama:
+    # For local Ollama, no API key needed
+    # For Ollama Cloud, set api_key_env: OLLAMA_API_KEY
+    # Custom base URL: base_url: http://localhost:11434
 ```
 
 ## Supported Providers
@@ -455,7 +524,7 @@ providers:
 | Google Gemini | Supported | Chat, Streaming, Tools, Reasoning |
 | xAI Grok | Supported | Chat, Streaming, Tools, Reasoning |
 | Z.ai GLM | Supported | Chat, Streaming, Tools, Thinking |
-| Ollama | Planned | - |
+| Ollama | Supported | Chat, Streaming, Tools, Thinking |
 
 ### xAI Grok Models
 
@@ -498,6 +567,23 @@ providers:
 | `gemini-2.5-pro` | Chat, Streaming, Tools, Reasoning (thinkingBudget) |
 | `gemini-2.5-flash` | Chat, Streaming, Tools, Reasoning (thinkingBudget) |
 | `gemini-2.5-flash-lite` | Chat, Streaming, Tools, Reasoning (thinkingBudget) |
+
+### Ollama Models
+
+Ollama supports any model you have pulled locally. Use `ollama pull <model>` to download models.
+
+| Model ID | Features |
+|----------|----------|
+| `llama3.2` | Chat, Streaming, Tools |
+| `llama3.2:70b` | Chat, Streaming, Tools |
+| `mistral` | Chat, Streaming, Tools |
+| `mixtral` | Chat, Streaming, Tools |
+| `qwen3` | Chat, Streaming, Tools, Thinking |
+| `gemma3` | Chat, Streaming |
+| `deepseek-coder` | Chat, Streaming |
+| `codellama` | Chat, Streaming |
+
+See https://ollama.com/library for all available models.
 
 ## Agent Graphs
 
@@ -571,6 +657,7 @@ import (
     "github.com/erikhoward/iris/providers/gemini"
     "github.com/erikhoward/iris/providers/xai"
     "github.com/erikhoward/iris/providers/zai"
+    "github.com/erikhoward/iris/providers/ollama"
     "github.com/erikhoward/iris/tools"
     "github.com/erikhoward/iris/agents/graph"
 )
