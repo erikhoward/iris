@@ -1,5 +1,5 @@
 # Iris
-
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/erikhoward/iris/CI?label=build&style=flat-square)&nbsp;
 [![Go Report Card](https://goreportcard.com/badge/github.com/erikhoward/iris?style=flat)](https://goreportcard.com/report/github.com/erikhoward/iris)
 
 Iris is a Go SDK and CLI for building AI-powered applications and agent workflows. It provides a unified interface for working with large language models (LLMs), making it easy to integrate AI capabilities into your Go projects.
