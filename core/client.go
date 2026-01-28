@@ -198,6 +198,7 @@ func (b *ChatBuilder) GetResponse(ctx context.Context) (*ChatResponse, error) {
 	var err error
 
 	// Execute with retry logic
+retryLoop:
 	for attempt := 0; ; attempt++ {
 		resp, err = b.client.provider.Chat(ctx, &b.req)
 		if err == nil {
@@ -214,11 +215,10 @@ func (b *ChatBuilder) GetResponse(ctx context.Context) (*ChatResponse, error) {
 		select {
 		case <-ctx.Done():
 			err = ctx.Err()
-			break
+			break retryLoop
 		case <-time.After(delay):
 			continue
 		}
-		break
 	}
 
 	// Emit telemetry end

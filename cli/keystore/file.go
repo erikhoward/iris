@@ -200,7 +200,10 @@ func (f *FileKeystore) decrypt(ciphertext []byte) ([]byte, error) {
 // deriveKey creates a machine-specific encryption key.
 // Uses hostname and user as entropy sources, hashed to create a 32-byte key.
 func deriveKey() ([]byte, error) {
-	hostname, _ := os.Hostname()
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
 	username := os.Getenv("USER")
 	if username == "" {
 		username = os.Getenv("USERNAME")

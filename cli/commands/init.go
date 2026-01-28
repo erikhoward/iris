@@ -153,17 +153,6 @@ func envVarForProvider(provider string) string {
 	return strings.ToUpper(provider) + "_API_KEY"
 }
 
-func providerImport(provider string) string {
-	switch provider {
-	case "openai":
-		return "github.com/erikhoward/iris/providers/openai"
-	case "anthropic":
-		return "github.com/erikhoward/iris/providers/anthropic"
-	default:
-		return "github.com/erikhoward/iris/providers/" + provider
-	}
-}
-
 func defaultModel(provider string) string {
 	switch provider {
 	case "openai":

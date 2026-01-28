@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -32,13 +33,13 @@ func TestDefaultConfigPathPlatform(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// Should use USERPROFILE on Windows
 		userProfile := os.Getenv("USERPROFILE")
-		if userProfile != "" && !filepath.HasPrefix(path, userProfile) {
+		if userProfile != "" && !strings.HasPrefix(path, userProfile) {
 			t.Logf("Note: path %q doesn't start with USERPROFILE %q", path, userProfile)
 		}
 	} else {
 		// Should use HOME on Unix
 		home := os.Getenv("HOME")
-		if home != "" && !filepath.HasPrefix(path, home) {
+		if home != "" && !strings.HasPrefix(path, home) {
 			t.Logf("Note: path %q doesn't start with HOME %q", path, home)
 		}
 	}

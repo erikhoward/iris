@@ -50,7 +50,7 @@ func init() {
 	chatCmd.Flags().IntVar(&maxTokens, "max-tokens", 0, "Max tokens (0 = use default)")
 	chatCmd.Flags().BoolVar(&stream, "stream", false, "Enable streaming output")
 
-	chatCmd.MarkFlagRequired("prompt")
+	_ = chatCmd.MarkFlagRequired("prompt")
 }
 
 func runChat(cmd *cobra.Command, args []string) error {
