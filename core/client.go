@@ -120,6 +120,52 @@ func (b *ChatBuilder) Tools(ts ...Tool) *ChatBuilder {
 	return b
 }
 
+// Instructions sets the system instructions (Responses API style).
+// For Chat Completions API, this is equivalent to adding a system message.
+func (b *ChatBuilder) Instructions(s string) *ChatBuilder {
+	b.req.Instructions = s
+	return b
+}
+
+// ReasoningEffort sets the reasoning effort level for models that support it.
+func (b *ChatBuilder) ReasoningEffort(level ReasoningEffort) *ChatBuilder {
+	b.req.ReasoningEffort = level
+	return b
+}
+
+// BuiltInTool adds a built-in tool to the request.
+func (b *ChatBuilder) BuiltInTool(toolType string) *ChatBuilder {
+	b.req.BuiltInTools = append(b.req.BuiltInTools, BuiltInTool{Type: toolType})
+	return b
+}
+
+// WebSearch adds the web_search built-in tool.
+func (b *ChatBuilder) WebSearch() *ChatBuilder {
+	return b.BuiltInTool("web_search")
+}
+
+// FileSearch adds the file_search built-in tool.
+func (b *ChatBuilder) FileSearch() *ChatBuilder {
+	return b.BuiltInTool("file_search")
+}
+
+// CodeInterpreter adds the code_interpreter built-in tool.
+func (b *ChatBuilder) CodeInterpreter() *ChatBuilder {
+	return b.BuiltInTool("code_interpreter")
+}
+
+// ContinueFrom chains this request to a previous response.
+func (b *ChatBuilder) ContinueFrom(responseID string) *ChatBuilder {
+	b.req.PreviousResponseID = responseID
+	return b
+}
+
+// Truncation sets the truncation mode for the request.
+func (b *ChatBuilder) Truncation(mode string) *ChatBuilder {
+	b.req.Truncation = mode
+	return b
+}
+
 // validate checks that the request is valid.
 func (b *ChatBuilder) validate() error {
 	if b.req.Model == "" {

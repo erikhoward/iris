@@ -52,149 +52,206 @@ const (
 
 // models is the static list of supported models.
 var models = []core.ModelInfo{
-	// GPT-5.2 series
+	// GPT-5.2 series (Responses API with reasoning and built-in tools)
 	{
 		ID:          ModelGPT52,
 		DisplayName: "GPT-5.2",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT52Pro,
 		DisplayName: "GPT-5.2 Pro",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT52Codex,
 		DisplayName: "GPT-5.2 Codex",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
-	// GPT-5.1 series
+	// GPT-5.1 series (Responses API with reasoning and built-in tools)
 	{
 		ID:          ModelGPT51,
 		DisplayName: "GPT-5.1",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT51Codex,
 		DisplayName: "GPT-5.1 Codex",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT51CodexMini,
 		DisplayName: "GPT-5.1 Codex Mini",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT51CodexMax,
 		DisplayName: "GPT-5.1 Codex Max",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
-	// GPT-5 series
+	// GPT-5 series (Responses API with reasoning and built-in tools)
 	{
 		ID:          ModelGPT5,
 		DisplayName: "GPT-5",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT5Mini,
 		DisplayName: "GPT-5 Mini",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT5Nano,
 		DisplayName: "GPT-5 Nano",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT5Pro,
 		DisplayName: "GPT-5 Pro",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT5Codex,
 		DisplayName: "GPT-5 Codex",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
-	// GPT-4.1 series
+	// GPT-4.1 series (Responses API without reasoning)
 	{
 		ID:          ModelGPT41,
 		DisplayName: "GPT-4.1",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT41Mini,
 		DisplayName: "GPT-4.1 Mini",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelGPT41Nano,
 		DisplayName: "GPT-4.1 Nano",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
-	// GPT-4o series
+	// GPT-4o series (Chat Completions API)
 	{
 		ID:          ModelGPT4o,
 		DisplayName: "GPT-4o",
+		APIEndpoint: core.APIEndpointCompletions,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
@@ -204,16 +261,18 @@ var models = []core.ModelInfo{
 	{
 		ID:          ModelGPT4oMini,
 		DisplayName: "GPT-4o Mini",
+		APIEndpoint: core.APIEndpointCompletions,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
 		},
 	},
-	// GPT-4 series
+	// GPT-4 series (Chat Completions API)
 	{
 		ID:          ModelGPT4Turbo,
 		DisplayName: "GPT-4 Turbo",
+		APIEndpoint: core.APIEndpointCompletions,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
@@ -223,16 +282,18 @@ var models = []core.ModelInfo{
 	{
 		ID:          ModelGPT4,
 		DisplayName: "GPT-4",
+		APIEndpoint: core.APIEndpointCompletions,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
 		},
 	},
-	// GPT-3.5 series
+	// GPT-3.5 series (Chat Completions API)
 	{
 		ID:          ModelGPT35Turbo,
 		DisplayName: "GPT-3.5 Turbo",
+		APIEndpoint: core.APIEndpointCompletions,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
@@ -242,6 +303,7 @@ var models = []core.ModelInfo{
 	{
 		ID:          ModelGPT35Turbo16k,
 		DisplayName: "GPT-3.5 Turbo 16k",
+		APIEndpoint: core.APIEndpointCompletions,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
@@ -251,64 +313,104 @@ var models = []core.ModelInfo{
 	{
 		ID:          ModelGPT35TurboInstruct,
 		DisplayName: "GPT-3.5 Turbo Instruct",
+		APIEndpoint: core.APIEndpointCompletions,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 		},
 	},
-	// Reasoning models (o-series)
+	// Reasoning models (o-series) - Responses API with reasoning
 	{
 		ID:          ModelO4Mini,
 		DisplayName: "o4-mini",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelO4MiniDeepResearch,
 		DisplayName: "o4-mini Deep Research",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelO3,
 		DisplayName: "o3",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelO3Mini,
 		DisplayName: "o3-mini",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureBuiltInTools,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelO1,
 		DisplayName: "o1",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureResponseChain,
 		},
 	},
 	{
 		ID:          ModelO1Pro,
 		DisplayName: "o1 Pro",
+		APIEndpoint: core.APIEndpointResponses,
 		Capabilities: []core.Feature{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
+			core.FeatureReasoning,
+			core.FeatureResponseChain,
 		},
 	},
+}
+
+// modelRegistry is a map for quick model lookup by ID.
+var modelRegistry = buildModelRegistry()
+
+// buildModelRegistry creates a map from model ID to ModelInfo.
+func buildModelRegistry() map[core.ModelID]*core.ModelInfo {
+	registry := make(map[core.ModelID]*core.ModelInfo, len(models))
+	for i := range models {
+		registry[models[i].ID] = &models[i]
+	}
+	return registry
+}
+
+// GetModelInfo returns the ModelInfo for a given model ID, or nil if not found.
+func GetModelInfo(id core.ModelID) *core.ModelInfo {
+	return modelRegistry[id]
 }

@@ -80,13 +80,33 @@ func (p *OpenAI) buildHeaders() http.Header {
 }
 
 // Chat sends a non-streaming chat request.
+// Routes to either the Chat Completions API or Responses API based on the model.
 func (p *OpenAI) Chat(ctx context.Context, req *core.ChatRequest) (*core.ChatResponse, error) {
+	if p.shouldUseResponsesAPI(req.Model) {
+		return p.doResponsesChat(ctx, req)
+	}
 	return p.doChat(ctx, req)
 }
 
 // StreamChat sends a streaming chat request.
+// Routes to either the Chat Completions API or Responses API based on the model.
 func (p *OpenAI) StreamChat(ctx context.Context, req *core.ChatRequest) (*core.ChatStream, error) {
+	if p.shouldUseResponsesAPI(req.Model) {
+		return p.doResponsesStreamChat(ctx, req)
+	}
 	return p.doStreamChat(ctx, req)
+}
+
+// shouldUseResponsesAPI determines if a model should use the Responses API.
+// Returns true for models that declare APIEndpointResponses, false otherwise.
+// Unknown models default to the Chat Completions API for backward compatibility.
+func (p *OpenAI) shouldUseResponsesAPI(model core.ModelID) bool {
+	info := GetModelInfo(model)
+	if info == nil {
+		// Unknown model - default to completions for backward compatibility
+		return false
+	}
+	return info.GetAPIEndpoint() == core.APIEndpointResponses
 }
 
 // Compile-time check that OpenAI implements Provider.

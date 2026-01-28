@@ -10,13 +10,49 @@ const (
 	FeatureChat          Feature = "chat"
 	FeatureChatStreaming Feature = "chat_streaming"
 	FeatureToolCalling   Feature = "tool_calling"
+	FeatureReasoning     Feature = "reasoning"
+	FeatureBuiltInTools  Feature = "builtin_tools"
+	FeatureResponseChain Feature = "response_chain"
 )
+
+// APIEndpoint represents which API endpoint a model uses.
+type APIEndpoint string
+
+const (
+	// APIEndpointCompletions is the Chat Completions API (default for older models).
+	APIEndpointCompletions APIEndpoint = "completions"
+	// APIEndpointResponses is the Responses API (for newer models like GPT-5.x).
+	APIEndpointResponses APIEndpoint = "responses"
+)
+
+// ReasoningEffort represents the level of reasoning effort for models that support it.
+type ReasoningEffort string
+
+const (
+	ReasoningEffortNone   ReasoningEffort = "none"
+	ReasoningEffortLow    ReasoningEffort = "low"
+	ReasoningEffortMedium ReasoningEffort = "medium"
+	ReasoningEffortHigh   ReasoningEffort = "high"
+	ReasoningEffortXHigh  ReasoningEffort = "xhigh"
+)
+
+// BuiltInTool represents a built-in tool available in the Responses API.
+type BuiltInTool struct {
+	Type string `json:"type"` // "web_search", "file_search", "code_interpreter"
+}
+
+// ReasoningOutput contains reasoning information from the model.
+type ReasoningOutput struct {
+	ID      string   `json:"id"`
+	Summary []string `json:"summary,omitempty"`
+}
 
 // ModelInfo describes a model available from a provider.
 type ModelInfo struct {
-	ID           ModelID   `json:"id"`
-	DisplayName  string    `json:"display_name"`
-	Capabilities []Feature `json:"capabilities"`
+	ID           ModelID     `json:"id"`
+	DisplayName  string      `json:"display_name"`
+	Capabilities []Feature   `json:"capabilities"`
+	APIEndpoint  APIEndpoint `json:"api_endpoint,omitempty"` // defaults to completions
 }
 
 // HasCapability reports whether the model supports the given feature.
@@ -27,6 +63,14 @@ func (m ModelInfo) HasCapability(f Feature) bool {
 		}
 	}
 	return false
+}
+
+// GetAPIEndpoint returns the API endpoint for the model, defaulting to completions.
+func (m ModelInfo) GetAPIEndpoint() APIEndpoint {
+	if m.APIEndpoint == "" {
+		return APIEndpointCompletions
+	}
+	return m.APIEndpoint
 }
 
 // ModelID is a string identifier for a model.
@@ -73,11 +117,18 @@ type Tool interface {
 
 // ChatRequest represents a request to a chat model.
 type ChatRequest struct {
-	Model       ModelID  `json:"model"`
+	Model       ModelID   `json:"model"`
 	Messages    []Message `json:"messages"`
-	Temperature *float32 `json:"temperature,omitempty"`
-	MaxTokens   *int     `json:"max_tokens,omitempty"`
-	Tools       []Tool   `json:"-"` // Tools are handled separately by providers
+	Temperature *float32  `json:"temperature,omitempty"`
+	MaxTokens   *int      `json:"max_tokens,omitempty"`
+	Tools       []Tool    `json:"-"` // Tools are handled separately by providers
+
+	// Responses API fields (ignored for Chat Completions API)
+	Instructions       string          `json:"instructions,omitempty"`
+	ReasoningEffort    ReasoningEffort `json:"reasoning_effort,omitempty"`
+	BuiltInTools       []BuiltInTool   `json:"builtin_tools,omitempty"`
+	PreviousResponseID string          `json:"previous_response_id,omitempty"`
+	Truncation         string          `json:"truncation,omitempty"`
 }
 
 // ChatResponse represents a response from a chat model.
@@ -88,6 +139,10 @@ type ChatResponse struct {
 	Output    string     `json:"output"`
 	Usage     TokenUsage `json:"usage"`
 	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+
+	// Responses API fields
+	Reasoning *ReasoningOutput `json:"reasoning,omitempty"`
+	Status    string           `json:"status,omitempty"`
 }
 
 // ChatChunk represents an incremental streaming response.

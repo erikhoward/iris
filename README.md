@@ -26,6 +26,7 @@ Iris solves these problems by providing:
 - Fluent chat builder with `System()`, `User()`, `Assistant()`, `Temperature()`, `MaxTokens()`, and `Tools()`
 - Non-streaming and streaming response modes
 - Tool/function calling support
+- **Responses API support** for GPT-5+ models with reasoning, built-in tools (web search, code interpreter), and response chaining
 - Automatic retry with exponential backoff
 - Telemetry hooks for observability
 - Normalized error types across providers
@@ -136,6 +137,39 @@ if len(resp.ToolCalls) > 0 {
 }
 ```
 
+### Using the Responses API (GPT-5)
+
+GPT-5 models automatically use OpenAI's Responses API, which provides advanced features like reasoning, built-in tools, and response chaining.
+
+```go
+// GPT-5 uses the Responses API automatically
+resp, err := client.Chat("gpt-5").
+    Instructions("You are a helpful research assistant.").
+    User("What are the latest developments in quantum computing?").
+    ReasoningEffort(core.ReasoningEffortHigh).
+    WebSearch().
+    GetResponse(ctx)
+
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Println(resp.Output)
+
+// Access reasoning summary if available
+if resp.Reasoning != nil {
+    for _, summary := range resp.Reasoning.Summary {
+        fmt.Println("Reasoning:", summary)
+    }
+}
+
+// Response chaining - continue from a previous response
+followUp, err := client.Chat("gpt-5").
+    ContinueFrom(resp.ID).
+    User("Can you elaborate on the most promising approach?").
+    GetResponse(ctx)
+```
+
 ### Using the CLI
 
 ```bash
@@ -145,8 +179,14 @@ iris keys set openai
 # Chat with a model
 iris chat --provider openai --model gpt-4o --prompt "Hello, world!"
 
+# Chat with GPT-5 (uses Responses API automatically)
+iris chat --provider openai --model gpt-5 --prompt "Explain quantum entanglement"
+
 # Stream responses
 iris chat --provider openai --model gpt-4o --prompt "Tell me a story" --stream
+
+# Stream with GPT-5
+iris chat --provider openai --model gpt-5 --prompt "Write a poem about AI" --stream
 
 # Get JSON output
 iris chat --provider openai --model gpt-4o --prompt "Hello" --json
@@ -182,7 +222,7 @@ Iris looks for configuration at `~/.iris/config.yaml`:
 
 ```yaml
 default_provider: openai
-default_model: gpt-4o
+default_model: gpt-5  # or gpt-4o for older models
 
 providers:
   openai:
@@ -193,7 +233,7 @@ providers:
 
 | Provider | Status | Features |
 |----------|--------|----------|
-| OpenAI | Supported | Chat, Streaming, Tools |
+| OpenAI | Supported | Chat, Streaming, Tools, Responses API (GPT-5+) |
 | Anthropic | Planned | - |
 | Ollama | Planned | - |
 
@@ -213,7 +253,7 @@ nodes:
   - id: process
     type: llm
     config:
-      model: gpt-4o
+      model: gpt-5
   - id: output
     type: output
 
