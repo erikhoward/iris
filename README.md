@@ -15,7 +15,7 @@ Building AI applications often requires:
 - Creating reusable agent workflows
 
 Iris solves these problems by providing:
-- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, Google Gemini, xAI Grok)
+- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, Google Gemini, xAI Grok, Z.ai GLM)
 - **Fluent Builder Pattern**: Intuitive, chainable API for constructing requests
 - **Built-in Streaming**: First-class support for streaming responses with proper channel handling
 - **Secure Key Management**: Encrypted local storage for API keys
@@ -237,6 +237,57 @@ if resp.Reasoning != nil && len(resp.Reasoning.Summary) > 0 {
 }
 ```
 
+### Using Z.ai GLM
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/erikhoward/iris/core"
+    "github.com/erikhoward/iris/providers/zai"
+)
+
+func main() {
+    // Create a Z.ai provider
+    provider := zai.New(os.Getenv("ZAI_API_KEY"))
+
+    // Create a client
+    client := core.NewClient(provider)
+
+    // Send a chat request using GLM-4.7
+    resp, err := client.Chat(zai.ModelGLM47).
+        System("You are a helpful assistant.").
+        User("What is the capital of France?").
+        GetResponse(context.Background())
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error:", err)
+        os.Exit(1)
+    }
+
+    fmt.Println(resp.Output)
+}
+```
+
+Z.ai GLM models with thinking support:
+
+```go
+// Use thinking mode with GLM-4.7 (enabled by default)
+resp, err := client.Chat(zai.ModelGLM47).
+    User("Solve this step by step: What is 15% of 240?").
+    ReasoningEffort(core.ReasoningEffortHigh).
+    GetResponse(ctx)
+
+// Access reasoning if available
+if resp.Reasoning != nil && len(resp.Reasoning.Summary) > 0 {
+    fmt.Println("Thinking:", resp.Reasoning.Summary[0])
+}
+```
+
 ### Streaming Responses
 
 ```go
@@ -318,6 +369,7 @@ iris keys set openai
 iris keys set anthropic
 iris keys set gemini
 iris keys set xai
+iris keys set zai
 
 # Chat with OpenAI
 iris chat --provider openai --model gpt-4o --prompt "Hello, world!"
@@ -330,6 +382,9 @@ iris chat --provider gemini --model gemini-2.5-flash --prompt "Hello, world!"
 
 # Chat with xAI Grok
 iris chat --provider xai --model grok-4 --prompt "Hello, world!"
+
+# Chat with Z.ai GLM
+iris chat --provider zai --model glm-4.7-flash --prompt "Hello, world!"
 
 # Chat with GPT-5 (uses Responses API automatically)
 iris chat --provider openai --model gpt-5 --prompt "Explain quantum entanglement"
@@ -357,7 +412,8 @@ iris/
 │   ├── openai/     # OpenAI provider
 │   ├── anthropic/  # Anthropic Claude provider
 │   ├── gemini/     # Google Gemini provider
-│   └── xai/        # xAI Grok provider
+│   ├── xai/        # xAI Grok provider
+│   └── zai/        # Z.ai GLM provider
 ├── tools/          # Tool/function calling framework
 ├── agents/         # Agent graph framework
 │   └── graph/      # Graph execution engine
@@ -386,6 +442,8 @@ providers:
     api_key_env: GEMINI_API_KEY
   xai:
     api_key_env: XAI_API_KEY
+  zai:
+    api_key_env: ZAI_API_KEY
 ```
 
 ## Supported Providers
@@ -396,6 +454,7 @@ providers:
 | Anthropic | Supported | Chat, Streaming, Tools |
 | Google Gemini | Supported | Chat, Streaming, Tools, Reasoning |
 | xAI Grok | Supported | Chat, Streaming, Tools, Reasoning |
+| Z.ai GLM | Supported | Chat, Streaming, Tools, Thinking |
 | Ollama | Planned | - |
 
 ### xAI Grok Models
@@ -410,6 +469,25 @@ providers:
 | `grok-code-fast` | Chat, Streaming, Tools (code-optimized) |
 | `grok-4-1-fast-non-reasoning` | Chat, Streaming, Tools (default for CLI) |
 | `grok-4-1-fast-reasoning` | Chat, Streaming, Tools, Reasoning |
+
+### Z.ai GLM Models
+
+| Model ID | Features |
+|----------|----------|
+| `glm-4.7` | Chat, Streaming, Tools, Thinking (latest flagship) |
+| `glm-4.7-flash` | Chat, Streaming, Tools (default for CLI) |
+| `glm-4.7-flashx` | Chat, Streaming, Tools |
+| `glm-4.6` | Chat, Streaming, Tools, Thinking |
+| `glm-4.6v` | Chat, Streaming, Tools, Thinking, Vision |
+| `glm-4.6v-flash` | Chat, Streaming, Tools, Vision |
+| `glm-4.6v-flashx` | Chat, Streaming, Tools, Vision |
+| `glm-4.5` | Chat, Streaming, Tools, Thinking |
+| `glm-4.5v` | Chat, Streaming, Tools, Thinking, Vision |
+| `glm-4.5-x` | Chat, Streaming, Tools |
+| `glm-4.5-air` | Chat, Streaming, Tools |
+| `glm-4.5-airx` | Chat, Streaming, Tools |
+| `glm-4.5-flash` | Chat, Streaming, Tools |
+| `glm-4-32b-0414-128k` | Chat, Streaming, Tools (128K context) |
 
 ### Gemini Models
 
@@ -492,6 +570,7 @@ import (
     "github.com/erikhoward/iris/providers/anthropic"
     "github.com/erikhoward/iris/providers/gemini"
     "github.com/erikhoward/iris/providers/xai"
+    "github.com/erikhoward/iris/providers/zai"
     "github.com/erikhoward/iris/tools"
     "github.com/erikhoward/iris/agents/graph"
 )
