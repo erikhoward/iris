@@ -10,7 +10,7 @@ const (
 	ModelGrok3Mini core.ModelID = "grok-3-mini"
 
 	// Grok 4 series
-	ModelGrok4                core.ModelID = "grok-4"
+	ModelGrok4                 core.ModelID = "grok-4"
 	ModelGrok4FastNonReasoning core.ModelID = "grok-4-fast-non-reasoning"
 	ModelGrok4FastReasoning    core.ModelID = "grok-4-fast-reasoning"
 
