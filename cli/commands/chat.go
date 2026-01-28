@@ -13,6 +13,7 @@ import (
 	"github.com/erikhoward/iris/providers/gemini"
 	"github.com/erikhoward/iris/providers/openai"
 	"github.com/erikhoward/iris/providers/xai"
+	"github.com/erikhoward/iris/providers/zai"
 	"github.com/spf13/cobra"
 )
 
@@ -228,6 +229,15 @@ func createProvider(providerID, apiKey string) (core.Provider, error) {
 			}
 		}
 		return xai.New(apiKey, opts...), nil
+	case "zai":
+		// Check for custom base URL in config
+		var opts []zai.Option
+		if cfg := GetConfig(); cfg != nil {
+			if pc := cfg.GetProvider(providerID); pc != nil && pc.BaseURL != "" {
+				opts = append(opts, zai.WithBaseURL(pc.BaseURL))
+			}
+		}
+		return zai.New(apiKey, opts...), nil
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", providerID)
 	}

@@ -163,6 +163,8 @@ func defaultModel(provider string) string {
 		return "gemini-2.5-flash"
 	case "xai":
 		return "grok-4-1-fast-non-reasoning"
+	case "zai":
+		return "glm-4.7-flash"
 	default:
 		return "default"
 	}
