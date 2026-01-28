@@ -3,6 +3,7 @@ package keystore
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -205,6 +206,10 @@ func TestFileKeystorePersistence(t *testing.T) {
 }
 
 func TestFileKeystoreFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permissions not supported on Windows")
+	}
+
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "keys.enc")
 
