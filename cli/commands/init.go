@@ -158,7 +158,7 @@ func defaultModel(provider string) string {
 	case "openai":
 		return "gpt-4o"
 	case "anthropic":
-		return "claude-3-5-sonnet-20241022"
+		return "claude-sonnet-4-5"
 	default:
 		return "default"
 	}
