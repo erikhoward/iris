@@ -69,3 +69,73 @@ func TestGenerateImageError(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 }
+
+func TestGenerateImageAsync(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/async/images/generations":
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(zaiAsyncImageResponse{
+				Model:      "glm-image",
+				ID:         "task-123",
+				RequestID:  "req-456",
+				TaskStatus: "PROCESSING",
+			})
+		case "/async-result/task-123":
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(zaiAsyncResultResponse{
+				Model:       "glm-image",
+				TaskStatus:  "SUCCESS",
+				ImageResult: []zaiImageResult{{URL: "https://example.com/async-image.png"}},
+				RequestID:   "req-456",
+			})
+		default:
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	p := New("test-key", WithBaseURL(server.URL))
+
+	resp, err := p.GenerateImageAsync(context.Background(), &core.ImageGenerateRequest{
+		Model:  "glm-image",
+		Prompt: "A sunset",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.TaskID != "task-123" {
+		t.Errorf("TaskID = %s, want task-123", resp.TaskID)
+	}
+}
+
+func TestGetImageResult(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/async-result/task-123" {
+			t.Errorf("Path = %s, want /async-result/task-123", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(zaiAsyncResultResponse{
+			Model:       "glm-image",
+			TaskStatus:  "SUCCESS",
+			ImageResult: []zaiImageResult{{URL: "https://example.com/async-image.png"}},
+		})
+	}))
+	defer server.Close()
+
+	p := New("test-key", WithBaseURL(server.URL))
+
+	resp, err := p.GetImageResult(context.Background(), "task-123")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(resp.Data) != 1 {
+		t.Fatalf("len(Data) = %d, want 1", len(resp.Data))
+	}
+	if resp.Data[0].URL != "https://example.com/async-image.png" {
+		t.Errorf("URL = %s, want https://example.com/async-image.png", resp.Data[0].URL)
+	}
+}
