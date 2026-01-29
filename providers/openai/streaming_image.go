@@ -80,6 +80,9 @@ func (p *OpenAI) processImageStream(
 	defer close(finalCh)
 
 	scanner := bufio.NewScanner(resp.Body)
+	// Base64-encoded images can be several MB, increase buffer from default 64KB
+	const maxImageSize = 10 * 1024 * 1024 // 10MB
+	scanner.Buffer(make([]byte, 64*1024), maxImageSize)
 	var finalResp *openAIImageResponse
 
 	for scanner.Scan() {
