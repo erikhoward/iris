@@ -9,6 +9,9 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
+	"path/filepath"
+	"strings"
 
 	"github.com/erikhoward/iris/core"
 )
@@ -115,7 +118,7 @@ func (p *OpenAI) EditImage(ctx context.Context, req *core.ImageEditRequest) (*co
 			filename = fmt.Sprintf("image%d.png", i)
 		}
 
-		part, err := w.CreateFormFile(fieldName, filename)
+		part, err := createFormFileWithMIME(w, fieldName, filename, data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create form file: %w", err)
 		}
@@ -135,7 +138,7 @@ func (p *OpenAI) EditImage(ctx context.Context, req *core.ImageEditRequest) (*co
 			if filename == "" {
 				filename = "mask.png"
 			}
-			part, err := w.CreateFormFile("mask", filename)
+			part, err := createFormFileWithMIME(w, "mask", filename, data)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create mask file: %w", err)
 			}
@@ -220,6 +223,49 @@ func parseImageError(resp *http.Response) error {
 		Message:  errResp.Error.Message,
 		Err:      mapStatusToError(resp.StatusCode),
 	}
+}
+
+// createFormFileWithMIME creates a form file with the correct MIME type.
+func createFormFileWithMIME(w *multipart.Writer, fieldName, filename string, data []byte) (io.Writer, error) {
+	mimeType := detectImageMIME(filename, data)
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, fieldName, filename))
+	h.Set("Content-Type", mimeType)
+	return w.CreatePart(h)
+}
+
+// detectImageMIME detects the MIME type from filename extension or magic bytes.
+func detectImageMIME(filename string, data []byte) string {
+	// Check file extension first
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".webp":
+		return "image/webp"
+	}
+
+	// Fall back to magic byte detection
+	if len(data) >= 8 {
+		// PNG: 89 50 4E 47 0D 0A 1A 0A
+		if data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 {
+			return "image/png"
+		}
+		// JPEG: FF D8 FF
+		if data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF {
+			return "image/jpeg"
+		}
+		// WebP: RIFF....WEBP
+		if data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x46 &&
+			len(data) >= 12 && data[8] == 0x57 && data[9] == 0x45 && data[10] == 0x42 && data[11] == 0x50 {
+			return "image/webp"
+		}
+	}
+
+	// Default to PNG
+	return "image/png"
 }
 
 // mapStatusToError maps HTTP status codes to sentinel errors.
