@@ -26,7 +26,7 @@ func (p *OpenAI) StreamImage(ctx context.Context, req *core.ImageGenerateRequest
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := p.config.BaseURL + "/v1/images/generations"
+	url := p.config.BaseURL + "/images/generations"
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

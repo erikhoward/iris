@@ -22,7 +22,7 @@ func (p *OpenAI) GenerateImage(ctx context.Context, req *core.ImageGenerateReque
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := p.config.BaseURL + "/v1/images/generations"
+	url := p.config.BaseURL + "/images/generations"
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -149,7 +149,7 @@ func (p *OpenAI) EditImage(ctx context.Context, req *core.ImageEditRequest) (*co
 		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
 	}
 
-	url := p.config.BaseURL + "/v1/images/edits"
+	url := p.config.BaseURL + "/images/edits"
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &buf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

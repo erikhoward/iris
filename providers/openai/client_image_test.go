@@ -14,8 +14,8 @@ import (
 
 func TestGenerateImage(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/images/generations" {
-			t.Errorf("path = %s, want /v1/images/generations", r.URL.Path)
+		if r.URL.Path != "/images/generations" {
+			t.Errorf("path = %s, want /images/generations", r.URL.Path)
 		}
 		if r.Method != http.MethodPost {
 			t.Errorf("method = %s, want POST", r.Method)
@@ -90,8 +90,8 @@ func TestGenerateImageError(t *testing.T) {
 
 func TestEditImage(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/images/edits" {
-			t.Errorf("path = %s, want /v1/images/edits", r.URL.Path)
+		if r.URL.Path != "/images/edits" {
+			t.Errorf("path = %s, want /images/edits", r.URL.Path)
 		}
 		if r.Method != http.MethodPost {
 			t.Errorf("method = %s, want POST", r.Method)
