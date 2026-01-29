@@ -12,7 +12,6 @@ import (
 func mapImageGenerateRequest(req *core.ImageGenerateRequest) *geminiImageRequest {
 	r := &geminiImageRequest{
 		Contents: []geminiContent{{
-			Role: "user",
 			Parts: []geminiPart{{
 				Text: req.Prompt,
 			}},
@@ -22,7 +21,7 @@ func mapImageGenerateRequest(req *core.ImageGenerateRequest) *geminiImageRequest
 		},
 	}
 
-	// Map size to aspect ratio
+	// Add aspect ratio if size is specified
 	if req.Size != "" {
 		r.GenerationConfig.ImageConfig = mapSizeToImageConfig(req.Size)
 	}
@@ -31,6 +30,7 @@ func mapImageGenerateRequest(req *core.ImageGenerateRequest) *geminiImageRequest
 }
 
 // mapSizeToImageConfig maps core ImageSize to Gemini image config.
+// Note: imageSize is only valid for gemini-3-pro-image-preview, not gemini-2.5-flash-image.
 func mapSizeToImageConfig(size core.ImageSize) *geminiImageGenConfig {
 	// Default to square aspect ratio
 	aspectRatio := "1:1"
@@ -43,7 +43,7 @@ func mapSizeToImageConfig(size core.ImageSize) *geminiImageGenConfig {
 
 	return &geminiImageGenConfig{
 		AspectRatio: aspectRatio,
-		ImageSize:   "1K", // Default resolution
+		// Don't set imageSize - it's only valid for gemini-3-pro-image-preview
 	}
 }
 
@@ -87,7 +87,6 @@ func mapImageEditRequest(req *core.ImageEditRequest) *geminiImageRequest {
 
 	r := &geminiImageRequest{
 		Contents: []geminiContent{{
-			Role:  "user",
 			Parts: parts,
 		}},
 		GenerationConfig: &geminiImageGenerationConfig{
@@ -95,6 +94,7 @@ func mapImageEditRequest(req *core.ImageEditRequest) *geminiImageRequest {
 		},
 	}
 
+	// Add aspect ratio if size is specified
 	if req.Size != "" {
 		r.GenerationConfig.ImageConfig = mapSizeToImageConfig(req.Size)
 	}
@@ -139,22 +139,38 @@ func mapImageResponse(resp *geminiResponse) *core.ImageResponse {
 		return r
 	}
 
+	// Collect all text and images from parts
+	var textParts []string
+	var images []core.ImageData
+
 	for _, part := range resp.Candidates[0].Content.Parts {
 		if part.InlineData != nil {
-			r.Data = append(r.Data, core.ImageData{
+			images = append(images, core.ImageData{
 				B64JSON: part.InlineData.Data,
 			})
 		}
 		if part.Text != "" {
-			// Store revised prompt if no images yet
-			if len(r.Data) == 0 {
-				r.Data = append(r.Data, core.ImageData{
-					RevisedPrompt: part.Text,
-				})
-			} else {
-				r.Data[len(r.Data)-1].RevisedPrompt = part.Text
-			}
+			textParts = append(textParts, part.Text)
 		}
+	}
+
+	// If we have images, add them with any text as revised prompt
+	if len(images) > 0 {
+		revisedPrompt := ""
+		if len(textParts) > 0 {
+			revisedPrompt = strings.Join(textParts, " ")
+		}
+		for i := range images {
+			if i == 0 && revisedPrompt != "" {
+				images[i].RevisedPrompt = revisedPrompt
+			}
+			r.Data = append(r.Data, images[i])
+		}
+	} else if len(textParts) > 0 {
+		// No images, just text - add as placeholder with revised prompt
+		r.Data = append(r.Data, core.ImageData{
+			RevisedPrompt: strings.Join(textParts, " "),
+		})
 	}
 
 	return r
