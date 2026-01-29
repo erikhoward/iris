@@ -115,6 +115,18 @@ func TestSupportsUnknownFeature(t *testing.T) {
 	}
 }
 
+func TestSupportsImageGeneration(t *testing.T) {
+	p := New("test-key")
+
+	if !p.Supports(core.FeatureImageGeneration) {
+		t.Error("OpenAI should support FeatureImageGeneration")
+	}
+}
+
+func TestImplementsImageGenerator(t *testing.T) {
+	var _ core.ImageGenerator = (*OpenAI)(nil)
+}
+
 func TestBuildHeadersAuth(t *testing.T) {
 	p := New("sk-test-key-123")
 	headers := p.buildHeaders()
