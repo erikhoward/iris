@@ -35,6 +35,7 @@ var (
 	ErrUnauthorized = errors.New("unauthorized")
 	ErrRateLimited  = errors.New("rate limited")
 	ErrBadRequest   = errors.New("bad request")
+	ErrNotFound     = errors.New("not found")
 	ErrServer       = errors.New("server error")
 	ErrNetwork      = errors.New("network error")
 	ErrDecode       = errors.New("decode error")
