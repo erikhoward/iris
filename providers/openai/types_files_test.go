@@ -97,3 +97,111 @@ func TestFileListResponseJSONUnmarshal(t *testing.T) {
 		t.Errorf("expected FirstID 'file-1', got %q", resp.FirstID)
 	}
 }
+
+func TestVectorStoreStatusConstants(t *testing.T) {
+	statuses := []VectorStoreStatus{
+		VectorStoreStatusExpired,
+		VectorStoreStatusInProgress,
+		VectorStoreStatusCompleted,
+	}
+
+	expected := []string{"expired", "in_progress", "completed"}
+	for i, s := range statuses {
+		if string(s) != expected[i] {
+			t.Errorf("expected %q, got %q", expected[i], s)
+		}
+	}
+}
+
+func TestVectorStoreJSONUnmarshal(t *testing.T) {
+	data := `{
+		"id": "vs_abc123",
+		"object": "vector_store",
+		"created_at": 1699061776,
+		"name": "Support FAQ",
+		"usage_bytes": 139920,
+		"file_counts": {
+			"in_progress": 0,
+			"completed": 3,
+			"failed": 0,
+			"cancelled": 0,
+			"total": 3
+		},
+		"status": "completed"
+	}`
+
+	var vs VectorStore
+	if err := json.Unmarshal([]byte(data), &vs); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+
+	if vs.ID != "vs_abc123" {
+		t.Errorf("expected ID 'vs_abc123', got %q", vs.ID)
+	}
+	if vs.Name != "Support FAQ" {
+		t.Errorf("expected Name 'Support FAQ', got %q", vs.Name)
+	}
+	if vs.Status != VectorStoreStatusCompleted {
+		t.Errorf("expected Status 'completed', got %q", vs.Status)
+	}
+	if vs.FileCounts.Completed != 3 {
+		t.Errorf("expected FileCounts.Completed 3, got %d", vs.FileCounts.Completed)
+	}
+}
+
+func TestVectorStoreFileJSONUnmarshal(t *testing.T) {
+	data := `{
+		"id": "file-abc123",
+		"object": "vector_store.file",
+		"created_at": 1699061776,
+		"usage_bytes": 1234,
+		"vector_store_id": "vs_abcd",
+		"status": "completed",
+		"last_error": null,
+		"chunking_strategy": {
+			"type": "static",
+			"static": {
+				"max_chunk_size_tokens": 800,
+				"chunk_overlap_tokens": 400
+			}
+		}
+	}`
+
+	var vsf VectorStoreFile
+	if err := json.Unmarshal([]byte(data), &vsf); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+
+	if vsf.ID != "file-abc123" {
+		t.Errorf("expected ID 'file-abc123', got %q", vsf.ID)
+	}
+	if vsf.Status != VectorStoreFileStatusCompleted {
+		t.Errorf("expected Status 'completed', got %q", vsf.Status)
+	}
+	if vsf.ChunkingStrategy == nil || vsf.ChunkingStrategy.Type != "static" {
+		t.Error("expected ChunkingStrategy.Type 'static'")
+	}
+	if vsf.ChunkingStrategy.Static.MaxChunkSizeTokens != 800 {
+		t.Errorf("expected MaxChunkSizeTokens 800, got %d", vsf.ChunkingStrategy.Static.MaxChunkSizeTokens)
+	}
+}
+
+func TestChunkingStrategyJSONMarshal(t *testing.T) {
+	cs := &ChunkingStrategy{
+		Type: "static",
+		Static: &StaticChunkingOpts{
+			MaxChunkSizeTokens: 800,
+			ChunkOverlapTokens: 400,
+		},
+	}
+
+	data, err := json.Marshal(cs)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	expected := `{"type":"static","static":{"max_chunk_size_tokens":800,"chunk_overlap_tokens":400}}`
+	if string(data) != expected {
+		t.Errorf("expected %s, got %s", expected, data)
+	}
+}
