@@ -63,8 +63,8 @@ func TestModels(t *testing.T) {
 	p := New("test-key")
 	models := p.Models()
 
-	if len(models) != 5 {
-		t.Errorf("Models() count = %d, want 5", len(models))
+	if len(models) != 7 {
+		t.Errorf("Models() count = %d, want 7", len(models))
 	}
 
 	// Verify model IDs
@@ -79,6 +79,8 @@ func TestModels(t *testing.T) {
 		ModelGemini25Flash,
 		ModelGemini25FlashLite,
 		ModelGemini25Pro,
+		ModelGemini25FlashImage,
+		ModelGemini3ProImagePreview,
 	}
 
 	for _, id := range expected {
