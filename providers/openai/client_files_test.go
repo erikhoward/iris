@@ -3,11 +3,14 @@ package openai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/erikhoward/iris/core"
 )
 
 func TestUploadFile(t *testing.T) {
@@ -153,5 +156,13 @@ func TestUploadFileError(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+
+	var provErr *core.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("expected ProviderError, got %T", err)
+	}
+	if !errors.Is(provErr, core.ErrBadRequest) {
+		t.Errorf("expected ErrBadRequest, got %v", provErr.Err)
 	}
 }
