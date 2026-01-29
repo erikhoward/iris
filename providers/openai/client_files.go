@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/erikhoward/iris/core"
 )
@@ -136,4 +137,110 @@ func (p *OpenAI) mapStatusToSentinel(status int) error {
 		}
 		return core.ErrBadRequest
 	}
+}
+
+// ListFiles returns a list of files.
+func (p *OpenAI) ListFiles(ctx context.Context, req *FileListRequest) (*FileListResponse, error) {
+	url := p.config.BaseURL + "/files"
+
+	// Build query parameters
+	if req != nil {
+		params := make([]string, 0)
+		if req.Purpose != nil {
+			params = append(params, "purpose="+string(*req.Purpose))
+		}
+		if req.Limit != nil {
+			params = append(params, "limit="+strconv.Itoa(*req.Limit))
+		}
+		if req.After != nil {
+			params = append(params, "after="+*req.After)
+		}
+		if req.Order != nil {
+			params = append(params, "order="+*req.Order)
+		}
+		if len(params) > 0 {
+			url += "?" + strings.Join(params, "&")
+		}
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	for key, values := range p.buildHeaders() {
+		for _, v := range values {
+			httpReq.Header.Add(key, v)
+		}
+	}
+
+	resp, err := p.config.HTTPClient.Do(httpReq)
+	if err != nil {
+		return nil, &core.ProviderError{
+			Provider: "openai",
+			Code:     "network_error",
+			Message:  err.Error(),
+			Err:      core.ErrNetwork,
+		}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, p.parseFileError(resp)
+	}
+
+	var result FileListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, &core.ProviderError{
+			Provider: "openai",
+			Code:     "decode_error",
+			Message:  err.Error(),
+			Err:      core.ErrDecode,
+		}
+	}
+
+	return &result, nil
+}
+
+// GetFile retrieves information about a specific file.
+func (p *OpenAI) GetFile(ctx context.Context, fileID string) (*File, error) {
+	url := p.config.BaseURL + "/files/" + fileID
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	for key, values := range p.buildHeaders() {
+		for _, v := range values {
+			httpReq.Header.Add(key, v)
+		}
+	}
+
+	resp, err := p.config.HTTPClient.Do(httpReq)
+	if err != nil {
+		return nil, &core.ProviderError{
+			Provider: "openai",
+			Code:     "network_error",
+			Message:  err.Error(),
+			Err:      core.ErrNetwork,
+		}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, p.parseFileError(resp)
+	}
+
+	var file File
+	if err := json.NewDecoder(resp.Body).Decode(&file); err != nil {
+		return nil, &core.ProviderError{
+			Provider: "openai",
+			Code:     "decode_error",
+			Message:  err.Error(),
+			Err:      core.ErrDecode,
+		}
+	}
+
+	return &file, nil
 }
