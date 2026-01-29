@@ -12,11 +12,22 @@ type responsesRequest struct {
 	MaxOutputTokens    *int                     `json:"max_output_tokens,omitempty"`
 	Temperature        *float32                 `json:"temperature,omitempty"`
 	Tools              []responsesTool          `json:"tools,omitempty"`
+	ToolResources      *responsesToolResources  `json:"tool_resources,omitempty"`
 	Reasoning          *responsesReasoningParam `json:"reasoning,omitempty"`
 	PreviousResponseID string                   `json:"previous_response_id,omitempty"`
 	Truncation         string                   `json:"truncation,omitempty"`
 	Stream             bool                     `json:"stream,omitempty"`
 	StreamOptions      *streamOptions           `json:"stream_options,omitempty"`
+}
+
+// responsesToolResources contains configuration for built-in tools.
+type responsesToolResources struct {
+	FileSearch *responsesFileSearchResources `json:"file_search,omitempty"`
+}
+
+// responsesFileSearchResources contains vector store IDs for file search.
+type responsesFileSearchResources struct {
+	VectorStoreIDs []string `json:"vector_store_ids"`
 }
 
 // streamOptions configures streaming behavior.

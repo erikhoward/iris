@@ -497,3 +497,62 @@ func (m *mockImageGenerator) EditImage(ctx context.Context, req *ImageEditReques
 func (m *mockImageGenerator) StreamImage(ctx context.Context, req *ImageGenerateRequest) (*ImageStream, error) {
 	return nil, nil
 }
+
+func TestFileSearchWithVectorStoreIDs(t *testing.T) {
+	p := &mockProvider{id: "test"}
+	client := NewClient(p)
+
+	builder := client.Chat("gpt-4.1-mini").
+		User("Search my docs").
+		FileSearch("vs_abc123", "vs_def456")
+
+	// Access the internal request to verify
+	if builder.req.ToolResources == nil {
+		t.Fatal("expected ToolResources to be set")
+	}
+	if builder.req.ToolResources.FileSearch == nil {
+		t.Fatal("expected FileSearch resources to be set")
+	}
+	if len(builder.req.ToolResources.FileSearch.VectorStoreIDs) != 2 {
+		t.Errorf("expected 2 vector store IDs, got %d", len(builder.req.ToolResources.FileSearch.VectorStoreIDs))
+	}
+	if builder.req.ToolResources.FileSearch.VectorStoreIDs[0] != "vs_abc123" {
+		t.Errorf("expected vs_abc123, got %s", builder.req.ToolResources.FileSearch.VectorStoreIDs[0])
+	}
+
+	// Verify file_search tool was added
+	found := false
+	for _, tool := range builder.req.BuiltInTools {
+		if tool.Type == "file_search" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected file_search tool to be added")
+	}
+}
+
+func TestFileSearchWithoutVectorStoreIDs(t *testing.T) {
+	p := &mockProvider{id: "test"}
+	client := NewClient(p)
+
+	builder := client.Chat("gpt-4.1-mini").
+		User("Search").
+		FileSearch()
+
+	// Should add the tool but no resources
+	found := false
+	for _, tool := range builder.req.BuiltInTools {
+		if tool.Type == "file_search" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected file_search tool to be added")
+	}
+	if builder.req.ToolResources != nil {
+		t.Error("expected no ToolResources when no vector store IDs provided")
+	}
+}

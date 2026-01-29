@@ -115,6 +115,16 @@ type Tool interface {
 	Description() string
 }
 
+// ToolResources contains configuration for built-in tools.
+type ToolResources struct {
+	FileSearch *FileSearchResources `json:"file_search,omitempty"`
+}
+
+// FileSearchResources contains vector store IDs for file search.
+type FileSearchResources struct {
+	VectorStoreIDs []string `json:"vector_store_ids"`
+}
+
 // ChatRequest represents a request to a chat model.
 type ChatRequest struct {
 	Model       ModelID   `json:"model"`
@@ -129,6 +139,7 @@ type ChatRequest struct {
 	BuiltInTools       []BuiltInTool   `json:"builtin_tools,omitempty"`
 	PreviousResponseID string          `json:"previous_response_id,omitempty"`
 	Truncation         string          `json:"truncation,omitempty"`
+	ToolResources      *ToolResources  `json:"tool_resources,omitempty"`
 }
 
 // ChatResponse represents a response from a chat model.

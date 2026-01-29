@@ -96,6 +96,29 @@ func TestProviderErrorUnwrapNil(t *testing.T) {
 	}
 }
 
+func TestErrNotFound(t *testing.T) {
+	if ErrNotFound == nil {
+		t.Fatal("ErrNotFound should not be nil")
+	}
+	if ErrNotFound.Error() != "not found" {
+		t.Errorf("expected 'not found', got %q", ErrNotFound.Error())
+	}
+}
+
+func TestProviderErrorUnwrapsNotFound(t *testing.T) {
+	err := &ProviderError{
+		Provider: "test",
+		Status:   404,
+		Code:     "not_found",
+		Message:  "resource not found",
+		Err:      ErrNotFound,
+	}
+
+	if !errors.Is(err, ErrNotFound) {
+		t.Error("expected ProviderError to unwrap to ErrNotFound")
+	}
+}
+
 func TestSentinelErrorsCanBeCheckedWithErrorsIs(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -104,6 +127,7 @@ func TestSentinelErrorsCanBeCheckedWithErrorsIs(t *testing.T) {
 		{"ErrUnauthorized", ErrUnauthorized},
 		{"ErrRateLimited", ErrRateLimited},
 		{"ErrBadRequest", ErrBadRequest},
+		{"ErrNotFound", ErrNotFound},
 		{"ErrServer", ErrServer},
 		{"ErrNetwork", ErrNetwork},
 		{"ErrDecode", ErrDecode},
@@ -138,6 +162,7 @@ func TestSentinelErrorsAreDifferent(t *testing.T) {
 		ErrUnauthorized,
 		ErrRateLimited,
 		ErrBadRequest,
+		ErrNotFound,
 		ErrServer,
 		ErrNetwork,
 		ErrDecode,
@@ -162,6 +187,7 @@ func TestSentinelErrorMessages(t *testing.T) {
 		{ErrUnauthorized, "unauthorized"},
 		{ErrRateLimited, "rate limited"},
 		{ErrBadRequest, "bad request"},
+		{ErrNotFound, "not found"},
 		{ErrServer, "server error"},
 		{ErrNetwork, "network error"},
 		{ErrDecode, "decode error"},
