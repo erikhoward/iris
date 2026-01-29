@@ -388,6 +388,69 @@ if len(resp.ToolCalls) > 0 {
 }
 ```
 
+### Image Generation
+
+Generate images using OpenAI's image models:
+
+```go
+provider := openai.New(os.Getenv("OPENAI_API_KEY"))
+
+// Generate an image
+resp, err := provider.GenerateImage(ctx, &core.ImageGenerateRequest{
+    Model:   openai.ModelGPTImage1,
+    Prompt:  "A serene mountain landscape at sunset",
+    Size:    core.ImageSize1024x1024,
+    Quality: core.ImageQualityHigh,
+})
+
+// Save the image
+data, _ := resp.Data[0].GetBytes()
+os.WriteFile("landscape.png", data, 0644)
+```
+
+#### Streaming Partial Images
+
+```go
+stream, _ := provider.StreamImage(ctx, &core.ImageGenerateRequest{
+    Model:         openai.ModelGPTImage1,
+    Prompt:        "A futuristic cityscape",
+    PartialImages: 3,
+})
+
+for chunk := range stream.Ch {
+    // Process partial image
+    fmt.Printf("Partial %d received\n", chunk.PartialImageIndex)
+}
+
+final := <-stream.Final
+// Save final image
+```
+
+#### Editing Images
+
+```go
+imageData, _ := os.ReadFile("input.png")
+
+resp, _ := provider.EditImage(ctx, &core.ImageEditRequest{
+    Model:  openai.ModelGPTImage1,
+    Prompt: "Add a rainbow in the sky",
+    Images: []core.ImageInput{
+        {Data: imageData},
+    },
+    InputFidelity: core.ImageInputFidelityHigh,
+})
+```
+
+#### Supported Image Models
+
+| Model | Description |
+|-------|-------------|
+| `gpt-image-1.5` | Latest GPT Image model |
+| `gpt-image-1` | Standard GPT Image |
+| `gpt-image-1-mini` | Fast, cost-effective |
+| `dall-e-3` | High quality (deprecated May 2026) |
+| `dall-e-2` | Lower cost, inpainting (deprecated May 2026) |
+
 ### Using the Responses API (GPT-5)
 
 GPT-5 models automatically use OpenAI's Responses API, which provides advanced features like reasoning, built-in tools, and response chaining.

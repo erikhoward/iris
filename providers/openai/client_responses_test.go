@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/erikhoward/iris/core"
@@ -449,5 +450,113 @@ func TestUnknownModelUsesCompletionsAPI(t *testing.T) {
 
 	if calledPath != "/chat/completions" {
 		t.Errorf("Called path = %q, want /chat/completions", calledPath)
+	}
+}
+
+func TestResponsesAPIImageGenerationTool(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			t.Fatalf("Failed to decode request: %v", err)
+		}
+
+		// Verify image_generation tool is in request
+		toolsRaw, ok := reqBody["tools"].([]any)
+		if !ok {
+			t.Fatal("Expected tools in request")
+		}
+
+		hasImageTool := false
+		for _, toolRaw := range toolsRaw {
+			tool, ok := toolRaw.(map[string]any)
+			if ok && tool["type"] == "image_generation" {
+				hasImageTool = true
+				break
+			}
+		}
+		if !hasImageTool {
+			t.Error("Expected image_generation tool in request")
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(responsesResponse{
+			ID:     "resp_123",
+			Status: "completed",
+			Output: []responsesOutput{
+				{
+					Type:   "image_generation_call",
+					ID:     "ig_123",
+					Status: "completed",
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	p := New("test-key", WithBaseURL(server.URL))
+
+	req := &core.ChatRequest{
+		Model:        ModelGPT52,
+		Messages:     []core.Message{{Role: core.RoleUser, Content: "Generate an image of a cat"}},
+		BuiltInTools: []core.BuiltInTool{{Type: "image_generation"}},
+	}
+
+	resp, err := p.Chat(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.ID != "resp_123" {
+		t.Errorf("ID = %s, want resp_123", resp.ID)
+	}
+}
+
+func TestResponsesAPIImageGenerationToolMapping(t *testing.T) {
+	// Test that image_generation tool is properly mapped
+	tools := mapResponsesTools(nil, []core.BuiltInTool{{Type: "image_generation"}})
+
+	if len(tools) != 1 {
+		t.Fatalf("len(tools) = %d, want 1", len(tools))
+	}
+
+	if tools[0].Type != "image_generation" {
+		t.Errorf("Type = %s, want image_generation", tools[0].Type)
+	}
+}
+
+func TestResponsesAPIImageGenerationCallOutput(t *testing.T) {
+	// Test parsing of image_generation_call output
+	respJSON := `{
+		"id": "resp_123",
+		"status": "completed",
+		"model": "gpt-5.2",
+		"output": [
+			{
+				"type": "image_generation_call",
+				"id": "ig_123",
+				"status": "completed"
+			},
+			{
+				"type": "message",
+				"content": [{"type": "text", "text": "I generated an image for you."}]
+			}
+		]
+	}`
+
+	var resp responsesResponse
+	if err := json.NewDecoder(strings.NewReader(respJSON)).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := mapResponsesResponse(&resp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.ID != "resp_123" {
+		t.Errorf("ID = %s, want resp_123", result.ID)
+	}
+	if result.Output != "I generated an image for you." {
+		t.Errorf("Output = %s, want 'I generated an image for you.'", result.Output)
 	}
 }

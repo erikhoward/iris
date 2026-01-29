@@ -48,6 +48,14 @@ const (
 	ModelO3Mini             core.ModelID = "o3-mini"
 	ModelO1                 core.ModelID = "o1"
 	ModelO1Pro              core.ModelID = "o1-pro"
+
+	// Image generation models
+	ModelGPTImage15         core.ModelID = "gpt-image-1.5"
+	ModelGPTImage1          core.ModelID = "gpt-image-1"
+	ModelGPTImage1Mini      core.ModelID = "gpt-image-1-mini"
+	ModelDALLE3             core.ModelID = "dall-e-3"
+	ModelDALLE2             core.ModelID = "dall-e-2"
+	ModelChatGPTImageLatest core.ModelID = "chatgpt-image-latest"
 )
 
 // models is the static list of supported models.
@@ -394,6 +402,49 @@ var models = []core.ModelInfo{
 			core.FeatureToolCalling,
 			core.FeatureReasoning,
 			core.FeatureResponseChain,
+		},
+	},
+	// Image generation models
+	{
+		ID:          ModelGPTImage15,
+		DisplayName: "GPT Image 1.5",
+		Capabilities: []core.Feature{
+			core.FeatureImageGeneration,
+		},
+	},
+	{
+		ID:          ModelGPTImage1,
+		DisplayName: "GPT Image 1",
+		Capabilities: []core.Feature{
+			core.FeatureImageGeneration,
+		},
+	},
+	{
+		ID:          ModelGPTImage1Mini,
+		DisplayName: "GPT Image 1 Mini",
+		Capabilities: []core.Feature{
+			core.FeatureImageGeneration,
+		},
+	},
+	{
+		ID:          ModelDALLE3,
+		DisplayName: "DALL-E 3",
+		Capabilities: []core.Feature{
+			core.FeatureImageGeneration,
+		},
+	},
+	{
+		ID:          ModelDALLE2,
+		DisplayName: "DALL-E 2",
+		Capabilities: []core.Feature{
+			core.FeatureImageGeneration,
+		},
+	},
+	{
+		ID:          ModelChatGPTImageLatest,
+		DisplayName: "ChatGPT Image Latest",
+		Capabilities: []core.Feature{
+			core.FeatureImageGeneration,
 		},
 	},
 }

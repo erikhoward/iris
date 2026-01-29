@@ -65,15 +65,19 @@ func TestModelsHaveCapabilities(t *testing.T) {
 			t.Errorf("Model %s has no capabilities", m.ID)
 		}
 
-		// All OpenAI models should support chat
+		// All chat models should support chat (image-only models are exempt)
 		hasChat := false
+		hasImageGen := false
 		for _, cap := range m.Capabilities {
 			if cap == core.FeatureChat {
 				hasChat = true
-				break
+			}
+			if cap == core.FeatureImageGeneration {
+				hasImageGen = true
 			}
 		}
-		if !hasChat {
+		// Only require FeatureChat if it's not an image-only model
+		if !hasChat && !hasImageGen {
 			t.Errorf("Model %s missing FeatureChat capability", m.ID)
 		}
 	}
@@ -109,6 +113,18 @@ func TestSupportsUnknownFeature(t *testing.T) {
 	if p.Supports(core.Feature("unknown_feature")) {
 		t.Error("Supports(unknown) = true, want false")
 	}
+}
+
+func TestSupportsImageGeneration(t *testing.T) {
+	p := New("test-key")
+
+	if !p.Supports(core.FeatureImageGeneration) {
+		t.Error("OpenAI should support FeatureImageGeneration")
+	}
+}
+
+func TestImplementsImageGenerator(t *testing.T) {
+	var _ core.ImageGenerator = (*OpenAI)(nil)
 }
 
 func TestBuildHeadersAuth(t *testing.T) {
