@@ -35,7 +35,7 @@ func TestGenerateImage(t *testing.T) {
 	p := New("test-key", WithBaseURL(server.URL))
 
 	resp, err := p.GenerateImage(context.Background(), &core.ImageGenerateRequest{
-		Model:  "gemini-2.5-flash-image",
+		Model:  "gemini-2.5-flash-image-preview",
 		Prompt: "A sunset",
 	})
 	if err != nil {

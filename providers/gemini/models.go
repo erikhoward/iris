@@ -15,8 +15,8 @@ const (
 	ModelGemini25Pro       core.ModelID = "gemini-2.5-pro"
 
 	// Image generation models
-	ModelGemini25FlashImage     core.ModelID = "gemini-2.5-flash-image"
-	ModelGemini3ProImagePreview core.ModelID = "gemini-3-pro-image-preview"
+	ModelGemini25FlashImagePreview core.ModelID = "gemini-2.5-flash-image-preview"
+	ModelGemini20FlashExp          core.ModelID = "gemini-2.0-flash-exp"
 )
 
 // models is the static list of supported models.
@@ -73,15 +73,15 @@ var models = []core.ModelInfo{
 	},
 	// Image generation models
 	{
-		ID:          ModelGemini25FlashImage,
-		DisplayName: "Gemini 2.5 Flash Image",
+		ID:          ModelGemini25FlashImagePreview,
+		DisplayName: "Gemini 2.5 Flash Image Preview",
 		Capabilities: []core.Feature{
 			core.FeatureImageGeneration,
 		},
 	},
 	{
-		ID:          ModelGemini3ProImagePreview,
-		DisplayName: "Gemini 3 Pro Image Preview",
+		ID:          ModelGemini20FlashExp,
+		DisplayName: "Gemini 2.0 Flash Experimental",
 		Capabilities: []core.Feature{
 			core.FeatureImageGeneration,
 		},

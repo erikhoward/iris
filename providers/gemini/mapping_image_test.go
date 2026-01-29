@@ -8,7 +8,7 @@ import (
 
 func TestMapImageGenerateRequest(t *testing.T) {
 	req := &core.ImageGenerateRequest{
-		Model:  "gemini-2.5-flash-image",
+		Model:  "gemini-2.5-flash-image-preview",
 		Prompt: "A sunset over mountains",
 		Size:   core.ImageSize1024x1024,
 	}
