@@ -11,6 +11,7 @@ import (
 	"github.com/erikhoward/iris/core"
 	"github.com/erikhoward/iris/providers/anthropic"
 	"github.com/erikhoward/iris/providers/gemini"
+	"github.com/erikhoward/iris/providers/huggingface"
 	"github.com/erikhoward/iris/providers/ollama"
 	"github.com/erikhoward/iris/providers/openai"
 	"github.com/erikhoward/iris/providers/xai"
@@ -252,6 +253,15 @@ func createProvider(providerID, apiKey string) (core.Provider, error) {
 			opts = append(opts, ollama.WithAPIKey(apiKey))
 		}
 		return ollama.New(opts...), nil
+	case "huggingface":
+		// Check for custom base URL in config
+		var opts []huggingface.Option
+		if cfg := GetConfig(); cfg != nil {
+			if pc := cfg.GetProvider(providerID); pc != nil && pc.BaseURL != "" {
+				opts = append(opts, huggingface.WithBaseURL(pc.BaseURL))
+			}
+		}
+		return huggingface.New(apiKey, opts...), nil
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", providerID)
 	}
