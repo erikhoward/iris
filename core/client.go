@@ -80,6 +80,11 @@ func WithRetryPolicy(r RetryPolicy) ClientOption {
 	}
 }
 
+// Provider returns the underlying provider.
+func (c *Client) Provider() Provider {
+	return c.provider
+}
+
 // Chat returns a ChatBuilder for constructing and executing a chat request.
 func (c *Client) Chat(model ModelID) *ChatBuilder {
 	return &ChatBuilder{
