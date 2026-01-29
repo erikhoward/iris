@@ -17,12 +17,13 @@ type geminiContent struct {
 	Parts []geminiPart `json:"parts"`
 }
 
-// geminiPart represents a part within content (text, function call, etc).
+// geminiPart represents a part within content (text, function call, image, etc).
 type geminiPart struct {
 	Text             string              `json:"text,omitempty"`
 	FunctionCall     *geminiFunctionCall `json:"functionCall,omitempty"`
 	FunctionResponse *geminiFunctionResp `json:"functionResponse,omitempty"`
 	Thought          *bool               `json:"thought,omitempty"`
+	InlineData       *geminiInlineData   `json:"inlineData,omitempty"`
 }
 
 // geminiGenConfig holds generation configuration.

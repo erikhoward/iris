@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// DefaultBaseURL is the default base URL for the Z.ai API.
-const DefaultBaseURL = "https://api.z.ai/api/paas/v4"
+// DefaultBaseURL is the default base URL for the Z.ai API (coding endpoint).
+const DefaultBaseURL = "https://api.z.ai/api/coding/paas/v4"
 
 // Config holds the configuration for the Z.ai provider.
 type Config struct {

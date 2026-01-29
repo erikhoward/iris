@@ -80,5 +80,5 @@ func (p *Zai) StreamChat(ctx context.Context, req *core.ChatRequest) (*core.Chat
 	return p.doStreamChat(ctx, req)
 }
 
-// Compile-time check that Zai implements Provider.
+// Compile-time checks that Zai implements required interfaces.
 var _ core.Provider = (*Zai)(nil)
