@@ -50,6 +50,15 @@ func buildResponsesRequest(req *core.ChatRequest, stream bool) *responsesRequest
 	// Map tools (both custom and built-in)
 	respReq.Tools = mapResponsesTools(req.Tools, req.BuiltInTools)
 
+	// Map tool resources
+	if req.ToolResources != nil && req.ToolResources.FileSearch != nil {
+		respReq.ToolResources = &responsesToolResources{
+			FileSearch: &responsesFileSearchResources{
+				VectorStoreIDs: req.ToolResources.FileSearch.VectorStoreIDs,
+			},
+		}
+	}
+
 	// Enable usage reporting for streaming
 	if stream {
 		respReq.StreamOptions = &streamOptions{

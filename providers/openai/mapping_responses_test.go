@@ -435,3 +435,48 @@ func TestResponsesToolInputMarshalMessages(t *testing.T) {
 		t.Errorf("result[0].Role = %q, want %q", result[0].Role, "user")
 	}
 }
+
+func TestBuildResponsesRequestWithToolResources(t *testing.T) {
+	req := &core.ChatRequest{
+		Model: "gpt-4.1-mini",
+		Messages: []core.Message{
+			{Role: core.RoleUser, Content: "Search my files"},
+		},
+		BuiltInTools: []core.BuiltInTool{{Type: "file_search"}},
+		ToolResources: &core.ToolResources{
+			FileSearch: &core.FileSearchResources{
+				VectorStoreIDs: []string{"vs_abc123", "vs_def456"},
+			},
+		},
+	}
+
+	result := buildResponsesRequest(req, false)
+
+	if result.ToolResources == nil {
+		t.Fatal("expected ToolResources to be set")
+	}
+	if result.ToolResources.FileSearch == nil {
+		t.Fatal("expected FileSearch to be set")
+	}
+	if len(result.ToolResources.FileSearch.VectorStoreIDs) != 2 {
+		t.Errorf("expected 2 vector store IDs, got %d", len(result.ToolResources.FileSearch.VectorStoreIDs))
+	}
+	if result.ToolResources.FileSearch.VectorStoreIDs[0] != "vs_abc123" {
+		t.Errorf("expected vs_abc123, got %s", result.ToolResources.FileSearch.VectorStoreIDs[0])
+	}
+}
+
+func TestBuildResponsesRequestWithoutToolResources(t *testing.T) {
+	req := &core.ChatRequest{
+		Model: "gpt-4.1-mini",
+		Messages: []core.Message{
+			{Role: core.RoleUser, Content: "Hello"},
+		},
+	}
+
+	result := buildResponsesRequest(req, false)
+
+	if result.ToolResources != nil {
+		t.Error("expected ToolResources to be nil")
+	}
+}
