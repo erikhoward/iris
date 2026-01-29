@@ -315,3 +315,43 @@ func TestMessageOrderingPreserved(t *testing.T) {
 		}
 	}
 }
+
+func TestToolResourcesJSONMarshal(t *testing.T) {
+	tr := &ToolResources{
+		FileSearch: &FileSearchResources{
+			VectorStoreIDs: []string{"vs_abc123", "vs_def456"},
+		},
+	}
+
+	data, err := json.Marshal(tr)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	expected := `{"file_search":{"vector_store_ids":["vs_abc123","vs_def456"]}}`
+	if string(data) != expected {
+		t.Errorf("expected %s, got %s", expected, data)
+	}
+}
+
+func TestChatRequestWithToolResources(t *testing.T) {
+	req := &ChatRequest{
+		Model: "gpt-4.1-mini",
+		Messages: []Message{
+			{Role: RoleUser, Content: "hello"},
+		},
+		BuiltInTools: []BuiltInTool{{Type: "file_search"}},
+		ToolResources: &ToolResources{
+			FileSearch: &FileSearchResources{
+				VectorStoreIDs: []string{"vs_abc123"},
+			},
+		},
+	}
+
+	if req.ToolResources == nil {
+		t.Error("expected ToolResources to be set")
+	}
+	if len(req.ToolResources.FileSearch.VectorStoreIDs) != 1 {
+		t.Errorf("expected 1 vector store ID, got %d", len(req.ToolResources.FileSearch.VectorStoreIDs))
+	}
+}
