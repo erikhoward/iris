@@ -244,3 +244,89 @@ func (p *OpenAI) GetFile(ctx context.Context, fileID string) (*File, error) {
 
 	return &file, nil
 }
+
+// DownloadFile retrieves the content of a file.
+// The caller is responsible for closing the returned ReadCloser.
+func (p *OpenAI) DownloadFile(ctx context.Context, fileID string) (io.ReadCloser, error) {
+	url := p.config.BaseURL + "/files/" + fileID + "/content"
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	for key, values := range p.buildHeaders() {
+		for _, v := range values {
+			httpReq.Header.Add(key, v)
+		}
+	}
+
+	resp, err := p.config.HTTPClient.Do(httpReq)
+	if err != nil {
+		return nil, &core.ProviderError{
+			Provider: "openai",
+			Code:     "network_error",
+			Message:  err.Error(),
+			Err:      core.ErrNetwork,
+		}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		defer resp.Body.Close()
+		return nil, p.parseFileError(resp)
+	}
+
+	return resp.Body, nil
+}
+
+// DeleteFile deletes a file.
+func (p *OpenAI) DeleteFile(ctx context.Context, fileID string) error {
+	url := p.config.BaseURL + "/files/" + fileID
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	for key, values := range p.buildHeaders() {
+		for _, v := range values {
+			httpReq.Header.Add(key, v)
+		}
+	}
+
+	resp, err := p.config.HTTPClient.Do(httpReq)
+	if err != nil {
+		return &core.ProviderError{
+			Provider: "openai",
+			Code:     "network_error",
+			Message:  err.Error(),
+			Err:      core.ErrNetwork,
+		}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return p.parseFileError(resp)
+	}
+
+	var result FileDeleteResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return &core.ProviderError{
+			Provider: "openai",
+			Code:     "decode_error",
+			Message:  err.Error(),
+			Err:      core.ErrDecode,
+		}
+	}
+
+	if !result.Deleted {
+		return &core.ProviderError{
+			Provider: "openai",
+			Code:     "delete_failed",
+			Message:  "file was not deleted",
+			Err:      core.ErrBadRequest,
+		}
+	}
+
+	return nil
+}

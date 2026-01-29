@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -293,6 +294,123 @@ func TestGetFileNotFound(t *testing.T) {
 	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
 
 	_, err := provider.GetFile(context.Background(), "file-nonexistent")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var provErr *core.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("expected ProviderError, got %T", err)
+	}
+	if !errors.Is(provErr, core.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", provErr.Err)
+	}
+}
+
+func TestDownloadFile(t *testing.T) {
+	content := []byte("file content here")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/v1/files/file-abc123/content" {
+			t.Errorf("expected /v1/files/file-abc123/content, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Write(content)
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	reader, err := provider.DownloadFile(context.Background(), "file-abc123")
+	if err != nil {
+		t.Fatalf("DownloadFile failed: %v", err)
+	}
+	defer reader.Close()
+
+	downloaded, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("failed to read content: %v", err)
+	}
+
+	if !bytes.Equal(downloaded, content) {
+		t.Errorf("expected %q, got %q", content, downloaded)
+	}
+}
+
+func TestDownloadFileNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]any{
+			"error": map[string]any{
+				"message": "No such file",
+				"code":    "not_found",
+			},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	_, err := provider.DownloadFile(context.Background(), "file-nonexistent")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var provErr *core.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("expected ProviderError, got %T", err)
+	}
+	if !errors.Is(provErr, core.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", provErr.Err)
+	}
+}
+
+func TestDeleteFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/v1/files/file-abc123" {
+			t.Errorf("expected /v1/files/file-abc123, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(FileDeleteResponse{
+			ID:      "file-abc123",
+			Object:  "file",
+			Deleted: true,
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	err := provider.DeleteFile(context.Background(), "file-abc123")
+	if err != nil {
+		t.Fatalf("DeleteFile failed: %v", err)
+	}
+}
+
+func TestDeleteFileNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]any{
+			"error": map[string]any{
+				"message": "No such file",
+				"code":    "not_found",
+			},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	err := provider.DeleteFile(context.Background(), "file-nonexistent")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
