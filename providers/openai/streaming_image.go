@@ -84,6 +84,7 @@ func (p *OpenAI) processImageStream(
 	const maxImageSize = 10 * 1024 * 1024 // 10MB
 	scanner.Buffer(make([]byte, 64*1024), maxImageSize)
 	var finalResp *openAIImageResponse
+	var lastChunk *openAIImageStreamEvent
 
 	for scanner.Scan() {
 		select {
@@ -116,6 +117,9 @@ func (p *OpenAI) processImageStream(
 		var event openAIImageStreamEvent
 		if err := json.Unmarshal([]byte(data), &event); err == nil {
 			if event.Type == "image_generation.partial_image" {
+				// Keep track of the last chunk (it's the final image)
+				eventCopy := event
+				lastChunk = &eventCopy
 				select {
 				case chunkCh <- mapImageChunk(&event):
 				case <-ctx.Done():
@@ -140,7 +144,13 @@ func (p *OpenAI) processImageStream(
 		return
 	}
 
+	// Send final response - either explicit response or construct from last chunk
 	if finalResp != nil {
 		finalCh <- mapImageResponse(finalResp)
+	} else if lastChunk != nil {
+		// Image API streaming: last partial is the final image
+		finalCh <- &core.ImageResponse{
+			Data: []core.ImageData{{B64JSON: lastChunk.B64JSON}},
+		}
 	}
 }
