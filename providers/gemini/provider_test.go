@@ -114,6 +114,7 @@ func TestSupports(t *testing.T) {
 		{core.FeatureChatStreaming, true},
 		{core.FeatureToolCalling, true},
 		{core.FeatureReasoning, true},
+		{core.FeatureImageGeneration, true},
 		{core.FeatureBuiltInTools, false},
 		{core.FeatureResponseChain, false},
 		{core.Feature("unknown"), false},

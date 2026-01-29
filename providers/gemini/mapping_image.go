@@ -1,6 +1,10 @@
 package gemini
 
 import (
+	"encoding/base64"
+	"path/filepath"
+	"strings"
+
 	"github.com/erikhoward/iris/core"
 )
 
@@ -53,6 +57,76 @@ type geminiImageRequest struct {
 type geminiImageGenerationConfig struct {
 	ResponseModalities []string              `json:"responseModalities,omitempty"`
 	ImageConfig        *geminiImageGenConfig `json:"imageConfig,omitempty"`
+}
+
+// mapImageEditRequest converts a core image edit request to Gemini format.
+func mapImageEditRequest(req *core.ImageEditRequest) *geminiImageRequest {
+	parts := []geminiPart{{
+		Text: req.Prompt,
+	}}
+
+	// Add input images
+	for _, img := range req.Images {
+		data, err := img.GetBytes()
+		if err != nil || data == nil {
+			continue
+		}
+
+		mimeType := "image/png"
+		if img.Filename != "" {
+			mimeType = detectMIMEType(img.Filename, data)
+		}
+
+		parts = append(parts, geminiPart{
+			InlineData: &geminiInlineData{
+				MimeType: mimeType,
+				Data:     base64.StdEncoding.EncodeToString(data),
+			},
+		})
+	}
+
+	r := &geminiImageRequest{
+		Contents: []geminiContent{{
+			Role:  "user",
+			Parts: parts,
+		}},
+		GenerationConfig: &geminiImageGenerationConfig{
+			ResponseModalities: []string{"TEXT", "IMAGE"},
+		},
+	}
+
+	if req.Size != "" {
+		r.GenerationConfig.ImageConfig = mapSizeToImageConfig(req.Size)
+	}
+
+	return r
+}
+
+// detectMIMEType detects MIME type from filename extension or magic bytes.
+func detectMIMEType(filename string, data []byte) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".webp":
+		return "image/webp"
+	case ".gif":
+		return "image/gif"
+	}
+
+	// Magic byte detection
+	if len(data) >= 8 {
+		if data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 {
+			return "image/png"
+		}
+		if data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF {
+			return "image/jpeg"
+		}
+	}
+
+	return "image/png"
 }
 
 // mapImageResponse converts a Gemini response to core format.
