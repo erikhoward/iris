@@ -29,12 +29,12 @@ func TestStreamImage(t *testing.T) {
 			flusher.Flush()
 		}
 
-		// Send final
-		finalResp := openAIImageResponse{
-			Created: 1234567890,
-			Data:    []openAIImageData{{B64JSON: "ZmluYWw="}},
+		// Send completed event with final image
+		completedEvent := openAIImageCompletedEvent{
+			Type:    "image_generation.completed",
+			B64JSON: "ZmluYWw=",
 		}
-		data, _ := json.Marshal(finalResp)
+		data, _ := json.Marshal(completedEvent)
 		fmt.Fprintf(w, "data: %s\n\n", data)
 		fmt.Fprint(w, "data: [DONE]\n\n")
 		flusher.Flush()

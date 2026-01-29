@@ -67,9 +67,35 @@ type openAIImageError struct {
 
 // openAIImageStreamEvent represents a streaming event from image generation.
 type openAIImageStreamEvent struct {
-	Type              string `json:"type"` // "image_generation.partial_image", "image_generation.complete"
+	Type              string `json:"type"` // "image_generation.partial_image", "image_generation.completed"
 	PartialImageIndex int    `json:"partial_image_index,omitempty"`
 	B64JSON           string `json:"b64_json,omitempty"`
+}
+
+// openAIImageCompletedEvent represents the final completed image event.
+type openAIImageCompletedEvent struct {
+	Type         string                     `json:"type"` // "image_generation.completed"
+	B64JSON      string                     `json:"b64_json"`
+	CreatedAt    int64                      `json:"created_at,omitempty"`
+	Size         string                     `json:"size,omitempty"`
+	Quality      string                     `json:"quality,omitempty"`
+	Background   string                     `json:"background,omitempty"`
+	OutputFormat string                     `json:"output_format,omitempty"`
+	Usage        *openAIImageCompletedUsage `json:"usage,omitempty"`
+}
+
+// openAIImageCompletedUsage contains token usage for completed image generation.
+type openAIImageCompletedUsage struct {
+	TotalTokens        int                           `json:"total_tokens"`
+	InputTokens        int                           `json:"input_tokens"`
+	OutputTokens       int                           `json:"output_tokens"`
+	InputTokensDetails *openAIImageInputTokenDetails `json:"input_tokens_details,omitempty"`
+}
+
+// openAIImageInputTokenDetails breaks down input token usage.
+type openAIImageInputTokenDetails struct {
+	TextTokens  int `json:"text_tokens"`
+	ImageTokens int `json:"image_tokens"`
 }
 
 // Responses API image generation tool types.

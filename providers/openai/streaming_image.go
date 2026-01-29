@@ -83,8 +83,7 @@ func (p *OpenAI) processImageStream(
 	// Base64-encoded images can be several MB, increase buffer from default 64KB
 	const maxImageSize = 10 * 1024 * 1024 // 10MB
 	scanner.Buffer(make([]byte, 64*1024), maxImageSize)
-	var finalResp *openAIImageResponse
-	var lastChunk *openAIImageStreamEvent
+	var completedEvent *openAIImageCompletedEvent
 
 	for scanner.Scan() {
 		select {
@@ -113,13 +112,11 @@ func (p *OpenAI) processImageStream(
 			break
 		}
 
-		// Try to parse as stream event first
+		// Try to parse as stream event
 		var event openAIImageStreamEvent
 		if err := json.Unmarshal([]byte(data), &event); err == nil {
-			if event.Type == "image_generation.partial_image" {
-				// Keep track of the last chunk (it's the final image)
-				eventCopy := event
-				lastChunk = &eventCopy
+			switch event.Type {
+			case "image_generation.partial_image":
 				select {
 				case chunkCh <- mapImageChunk(&event):
 				case <-ctx.Done():
@@ -127,14 +124,13 @@ func (p *OpenAI) processImageStream(
 					return
 				}
 				continue
-			}
-		}
-
-		// Try to parse as final response
-		var imgResp openAIImageResponse
-		if err := json.Unmarshal([]byte(data), &imgResp); err == nil {
-			if len(imgResp.Data) > 0 {
-				finalResp = &imgResp
+			case "image_generation.completed":
+				// Parse the completed event with full details
+				var completed openAIImageCompletedEvent
+				if err := json.Unmarshal([]byte(data), &completed); err == nil {
+					completedEvent = &completed
+				}
+				continue
 			}
 		}
 	}
@@ -144,13 +140,10 @@ func (p *OpenAI) processImageStream(
 		return
 	}
 
-	// Send final response - either explicit response or construct from last chunk
-	if finalResp != nil {
-		finalCh <- mapImageResponse(finalResp)
-	} else if lastChunk != nil {
-		// Image API streaming: last partial is the final image
+	// Send final response from completed event
+	if completedEvent != nil {
 		finalCh <- &core.ImageResponse{
-			Data: []core.ImageData{{B64JSON: lastChunk.B64JSON}},
+			Data: []core.ImageData{{B64JSON: completedEvent.B64JSON}},
 		}
 	}
 }
