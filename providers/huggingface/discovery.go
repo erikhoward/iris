@@ -221,11 +221,7 @@ func (p *HuggingFace) ListModels(ctx context.Context, opts ListModelsOptions) ([
 
 	models := make([]HubModelInfo, len(results))
 	for i, r := range results {
-		models[i] = HubModelInfo{
-			ID:          r.ID,
-			PipelineTag: r.PipelineTag,
-			Inference:   r.Inference,
-		}
+		models[i] = HubModelInfo(r)
 	}
 
 	return models, nil
