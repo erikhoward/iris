@@ -79,8 +79,8 @@ func TestModels(t *testing.T) {
 		ModelGemini25Flash,
 		ModelGemini25FlashLite,
 		ModelGemini25Pro,
-		ModelGemini25FlashImagePreview,
-		ModelGemini20FlashExp,
+		ModelGemini25FlashImage,
+		ModelGemini3ProImage,
 	}
 
 	for _, id := range expected {

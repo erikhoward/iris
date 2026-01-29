@@ -14,9 +14,9 @@ const (
 	ModelGemini25FlashLite core.ModelID = "gemini-2.5-flash-lite"
 	ModelGemini25Pro       core.ModelID = "gemini-2.5-pro"
 
-	// Image generation models
-	ModelGemini25FlashImagePreview core.ModelID = "gemini-2.5-flash-image-preview"
-	ModelGemini20FlashExp          core.ModelID = "gemini-2.0-flash-exp"
+	// Image generation models (Nano Banana)
+	ModelGemini25FlashImage core.ModelID = "gemini-2.5-flash-image"     // Nano Banana - fast/efficient
+	ModelGemini3ProImage    core.ModelID = "gemini-3-pro-image-preview" // Nano Banana Pro - professional with reasoning
 )
 
 // models is the static list of supported models.
@@ -71,17 +71,17 @@ var models = []core.ModelInfo{
 			core.FeatureReasoning,
 		},
 	},
-	// Image generation models
+	// Image generation models (Nano Banana)
 	{
-		ID:          ModelGemini25FlashImagePreview,
-		DisplayName: "Gemini 2.5 Flash Image Preview",
+		ID:          ModelGemini25FlashImage,
+		DisplayName: "Gemini 2.5 Flash Image (Nano Banana)",
 		Capabilities: []core.Feature{
 			core.FeatureImageGeneration,
 		},
 	},
 	{
-		ID:          ModelGemini20FlashExp,
-		DisplayName: "Gemini 2.0 Flash Experimental",
+		ID:          ModelGemini3ProImage,
+		DisplayName: "Gemini 3 Pro Image Preview (Nano Banana Pro)",
 		Capabilities: []core.Feature{
 			core.FeatureImageGeneration,
 		},
