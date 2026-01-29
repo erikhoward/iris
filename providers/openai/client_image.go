@@ -1,4 +1,3 @@
-// providers/openai/client_image.go
 package openai
 
 import (

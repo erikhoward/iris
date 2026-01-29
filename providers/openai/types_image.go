@@ -1,7 +1,4 @@
-// providers/openai/types_image.go
 package openai
-
-// OpenAI Image API types.
 
 // openAIImageRequest represents a request to the OpenAI image generations endpoint.
 type openAIImageRequest struct {
@@ -18,22 +15,6 @@ type openAIImageRequest struct {
 	User              string `json:"user,omitempty"`
 	Stream            bool   `json:"stream,omitempty"`
 	PartialImages     int    `json:"partial_images,omitempty"`
-}
-
-// openAIImageEditRequest is handled via multipart form, not JSON.
-// Fields documented here for reference during multipart encoding.
-type openAIImageEditRequest struct {
-	Model             string
-	Prompt            string
-	N                 int
-	Size              string
-	Quality           string
-	ResponseFormat    string
-	OutputFormat      string
-	OutputCompression *int
-	Background        string
-	InputFidelity     string
-	User              string
 }
 
 // openAIImageResponse represents a response from the OpenAI image API.
@@ -96,47 +77,4 @@ type openAIImageCompletedUsage struct {
 type openAIImageInputTokenDetails struct {
 	TextTokens  int `json:"text_tokens"`
 	ImageTokens int `json:"image_tokens"`
-}
-
-// Responses API image generation tool types.
-
-// responsesImageGenTool represents the image_generation tool configuration.
-type responsesImageGenTool struct {
-	Type           string              `json:"type"` // "image_generation"
-	Quality        string              `json:"quality,omitempty"`
-	Size           string              `json:"size,omitempty"`
-	Background     string              `json:"background,omitempty"`
-	OutputFormat   string              `json:"output_format,omitempty"`
-	Compression    *int                `json:"output_compression,omitempty"`
-	PartialImages  int                 `json:"partial_images,omitempty"`
-	InputFidelity  string              `json:"input_fidelity,omitempty"`
-	Action         string              `json:"action,omitempty"` // "auto", "generate", "edit"
-	InputImageMask *responsesImageMask `json:"input_image_mask,omitempty"`
-}
-
-// responsesImageMask specifies a mask for image editing.
-type responsesImageMask struct {
-	FileID   string `json:"file_id,omitempty"`
-	ImageURL string `json:"image_url,omitempty"`
-}
-
-// responsesImageGenCall represents an image_generation_call in output.
-type responsesImageGenCall struct {
-	ID            string `json:"id"`
-	Type          string `json:"type"` // "image_generation_call"
-	Status        string `json:"status"`
-	Result        string `json:"result,omitempty"` // Base64 image data
-	RevisedPrompt string `json:"revised_prompt,omitempty"`
-	Size          string `json:"size,omitempty"`
-	Quality       string `json:"quality,omitempty"`
-	Background    string `json:"background,omitempty"`
-	OutputFormat  string `json:"output_format,omitempty"`
-	Action        string `json:"action,omitempty"` // "generate" or "edit"
-}
-
-// responsesImageStreamEvent represents a streaming image event from Responses API.
-type responsesImageStreamEvent struct {
-	Type              string `json:"type"` // "response.image_generation_call.partial_image"
-	PartialImageIndex int    `json:"partial_image_index"`
-	PartialImageB64   string `json:"partial_image_b64"`
 }

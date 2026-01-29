@@ -1,4 +1,3 @@
-// providers/openai/mapping_image.go
 package openai
 
 import (
@@ -120,32 +119,4 @@ func mapImageChunk(event *openAIImageStreamEvent) core.ImageChunk {
 		PartialImageIndex: event.PartialImageIndex,
 		B64JSON:           event.B64JSON,
 	}
-}
-
-// mapImageGenTool converts image generation settings to Responses API tool format.
-func mapImageGenTool(req *core.ImageGenerateRequest) responsesImageGenTool {
-	tool := responsesImageGenTool{
-		Type: "image_generation",
-	}
-
-	if req.Quality != "" {
-		tool.Quality = string(req.Quality)
-	}
-	if req.Size != "" {
-		tool.Size = string(req.Size)
-	}
-	if req.Background != "" {
-		tool.Background = string(req.Background)
-	}
-	if req.Format != "" {
-		tool.OutputFormat = string(req.Format)
-	}
-	if req.Compression != nil {
-		tool.Compression = req.Compression
-	}
-	if req.PartialImages > 0 {
-		tool.PartialImages = req.PartialImages
-	}
-
-	return tool
 }

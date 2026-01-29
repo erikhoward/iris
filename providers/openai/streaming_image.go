@@ -1,4 +1,3 @@
-// providers/openai/streaming_image.go
 package openai
 
 import (

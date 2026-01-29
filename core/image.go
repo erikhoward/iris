@@ -1,9 +1,8 @@
-// core/image.go
 package core
 
 import "encoding/base64"
 
-// Feature constant for image generation
+// FeatureImageGeneration indicates support for image generation.
 const FeatureImageGeneration Feature = "image_generation"
 
 // ImageSize represents supported image dimensions.

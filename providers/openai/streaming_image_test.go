@@ -4,6 +4,7 @@ package openai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -140,8 +141,9 @@ func TestStreamImageContextCancellation(t *testing.T) {
 	// Should eventually get context error or channels close
 	select {
 	case err := <-stream.Err:
-		if err != nil && err != context.Canceled {
-			// Accept both nil and context.Canceled
+		// Accept nil or context.Canceled (possibly wrapped)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Errorf("unexpected error: %v", err)
 		}
 	case <-stream.Final:
 		// Final may be nil, that's ok
