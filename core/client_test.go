@@ -478,3 +478,22 @@ type mockTool struct {
 
 func (t *mockTool) Name() string        { return t.name }
 func (t *mockTool) Description() string { return "mock tool" }
+
+func TestImageGeneratorInterface(t *testing.T) {
+	// Verify the interface is defined
+	var _ ImageGenerator = (*mockImageGenerator)(nil)
+}
+
+type mockImageGenerator struct{}
+
+func (m *mockImageGenerator) GenerateImage(ctx context.Context, req *ImageGenerateRequest) (*ImageResponse, error) {
+	return nil, nil
+}
+
+func (m *mockImageGenerator) EditImage(ctx context.Context, req *ImageEditRequest) (*ImageResponse, error) {
+	return nil, nil
+}
+
+func (m *mockImageGenerator) StreamImage(ctx context.Context, req *ImageGenerateRequest) (*ImageStream, error) {
+	return nil, nil
+}

@@ -25,6 +25,19 @@ type Provider interface {
 	StreamChat(ctx context.Context, req *ChatRequest) (*ChatStream, error)
 }
 
+// ImageGenerator is an optional interface for providers that support image generation.
+type ImageGenerator interface {
+	// GenerateImage generates images from a text prompt.
+	GenerateImage(ctx context.Context, req *ImageGenerateRequest) (*ImageResponse, error)
+
+	// EditImage edits existing images using a prompt and optional mask.
+	EditImage(ctx context.Context, req *ImageEditRequest) (*ImageResponse, error)
+
+	// StreamImage generates images with streaming partial results.
+	// Not all providers support streaming.
+	StreamImage(ctx context.Context, req *ImageGenerateRequest) (*ImageStream, error)
+}
+
 // Client is the main entry point for interacting with LLM providers.
 // Client is safe for concurrent use.
 type Client struct {
