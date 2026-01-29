@@ -6,7 +6,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/erikhoward/iris/core"
 )
@@ -325,5 +327,114 @@ func TestDeleteVectorStoreFile(t *testing.T) {
 	err := provider.DeleteVectorStoreFile(context.Background(), "vs_abc123", "file-xyz789")
 	if err != nil {
 		t.Fatalf("DeleteVectorStoreFile failed: %v", err)
+	}
+}
+
+func TestPollVectorStoreUntilReady(t *testing.T) {
+	var callCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count := atomic.AddInt32(&callCount, 1)
+
+		status := VectorStoreStatusInProgress
+		if count >= 3 {
+			status = VectorStoreStatusCompleted
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(VectorStore{
+			ID:     "vs_abc123",
+			Name:   "test-store",
+			Status: status,
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	result, err := provider.PollVectorStoreUntilReady(ctx, "vs_abc123", 10*time.Millisecond)
+	if err != nil {
+		t.Fatalf("PollVectorStoreUntilReady failed: %v", err)
+	}
+
+	if result.Status != VectorStoreStatusCompleted {
+		t.Errorf("expected status 'completed', got %q", result.Status)
+	}
+	if callCount < 3 {
+		t.Errorf("expected at least 3 calls, got %d", callCount)
+	}
+}
+
+func TestPollVectorStoreUntilReadyAlreadyComplete(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(VectorStore{
+			ID:     "vs_abc123",
+			Status: VectorStoreStatusCompleted,
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	result, err := provider.PollVectorStoreUntilReady(context.Background(), "vs_abc123", time.Second)
+	if err != nil {
+		t.Fatalf("PollVectorStoreUntilReady failed: %v", err)
+	}
+
+	if result.Status != VectorStoreStatusCompleted {
+		t.Errorf("expected status 'completed', got %q", result.Status)
+	}
+}
+
+func TestPollVectorStoreUntilReadyExpired(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(VectorStore{
+			ID:     "vs_abc123",
+			Status: VectorStoreStatusExpired,
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	_, err := provider.PollVectorStoreUntilReady(context.Background(), "vs_abc123", time.Second)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var provErr *core.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("expected ProviderError, got %T", err)
+	}
+	if provErr.Code != "vector_store_expired" {
+		t.Errorf("expected code 'vector_store_expired', got %q", provErr.Code)
+	}
+}
+
+func TestPollVectorStoreUntilReadyContextCanceled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(VectorStore{
+			ID:     "vs_abc123",
+			Status: VectorStoreStatusInProgress,
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	_, err := provider.PollVectorStoreUntilReady(ctx, "vs_abc123", 100*time.Millisecond)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("expected DeadlineExceeded, got %v", err)
 	}
 }

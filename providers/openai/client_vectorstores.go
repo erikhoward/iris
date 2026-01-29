@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/erikhoward/iris/core"
 )
@@ -429,6 +430,44 @@ func (p *OpenAI) DeleteVectorStoreFile(ctx context.Context, vectorStoreID, fileI
 	}
 
 	return nil
+}
+
+// PollVectorStoreUntilReady polls a vector store until it reaches completed status.
+// It returns an error if the vector store expires or if the context is canceled.
+func (p *OpenAI) PollVectorStoreUntilReady(ctx context.Context, vectorStoreID string, interval time.Duration) (*VectorStore, error) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	// First check immediately
+	vs, err := p.GetVectorStore(ctx, vectorStoreID)
+	if err != nil {
+		return nil, err
+	}
+
+	for vs.Status != VectorStoreStatusCompleted {
+		// Check for terminal failure states
+		if vs.Status == VectorStoreStatusExpired {
+			return nil, &core.ProviderError{
+				Provider: "openai",
+				Code:     "vector_store_expired",
+				Message:  "vector store has expired",
+				Err:      core.ErrBadRequest,
+			}
+		}
+
+		// Wait for next poll or context cancellation
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-ticker.C:
+			vs, err = p.GetVectorStore(ctx, vectorStoreID)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return vs, nil
 }
 
 // parseVectorStoreError parses an error response from the Vector Stores API.
