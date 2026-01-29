@@ -162,9 +162,22 @@ func (b *ChatBuilder) WebSearch() *ChatBuilder {
 	return b.BuiltInTool("web_search")
 }
 
-// FileSearch adds the file_search built-in tool.
-func (b *ChatBuilder) FileSearch() *ChatBuilder {
-	return b.BuiltInTool("file_search")
+// FileSearch adds the file_search built-in tool with optional vector store IDs.
+func (b *ChatBuilder) FileSearch(vectorStoreIDs ...string) *ChatBuilder {
+	// Add the file_search tool
+	b.req.BuiltInTools = append(b.req.BuiltInTools, BuiltInTool{Type: "file_search"})
+
+	// If vector store IDs are provided, set up tool resources
+	if len(vectorStoreIDs) > 0 {
+		if b.req.ToolResources == nil {
+			b.req.ToolResources = &ToolResources{}
+		}
+		b.req.ToolResources.FileSearch = &FileSearchResources{
+			VectorStoreIDs: vectorStoreIDs,
+		}
+	}
+
+	return b
 }
 
 // CodeInterpreter adds the code_interpreter built-in tool.
