@@ -25,10 +25,6 @@ const (
 
 	// GLM-4 32B
 	ModelGLM4_32B core.ModelID = "glm-4-32b-0414-128k"
-
-	// Image generation models
-	ModelGLMImage core.ModelID = "glm-image"
-	ModelCogView4 core.ModelID = "cogview-4-250304"
 )
 
 // models is the static list of supported models.
@@ -184,21 +180,6 @@ var models = []core.ModelInfo{
 			core.FeatureChat,
 			core.FeatureChatStreaming,
 			core.FeatureToolCalling,
-		},
-	},
-	// Image generation models
-	{
-		ID:          ModelGLMImage,
-		DisplayName: "GLM Image",
-		Capabilities: []core.Feature{
-			core.FeatureImageGeneration,
-		},
-	},
-	{
-		ID:          ModelCogView4,
-		DisplayName: "CogView 4",
-		Capabilities: []core.Feature{
-			core.FeatureImageGeneration,
 		},
 	},
 }

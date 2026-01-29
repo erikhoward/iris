@@ -44,7 +44,7 @@ func (p *Zai) Models() []core.ModelInfo {
 // Supports reports whether the provider supports the given feature.
 func (p *Zai) Supports(feature core.Feature) bool {
 	switch feature {
-	case core.FeatureChat, core.FeatureChatStreaming, core.FeatureToolCalling, core.FeatureReasoning, core.FeatureImageGeneration:
+	case core.FeatureChat, core.FeatureChatStreaming, core.FeatureToolCalling, core.FeatureReasoning:
 		return true
 	default:
 		return false
@@ -82,4 +82,3 @@ func (p *Zai) StreamChat(ctx context.Context, req *core.ChatRequest) (*core.Chat
 
 // Compile-time checks that Zai implements required interfaces.
 var _ core.Provider = (*Zai)(nil)
-var _ core.ImageGenerator = (*Zai)(nil)
