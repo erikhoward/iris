@@ -234,3 +234,46 @@ func TestListAllFiles(t *testing.T) {
 		t.Errorf("callCount = %d, want 2 (pagination)", callCount)
 	}
 }
+
+func TestDeleteFile(t *testing.T) {
+	deleteReceived := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Errorf("Method = %q, want DELETE", r.Method)
+		}
+		if !strings.HasSuffix(r.URL.Path, "/files/test-123") {
+			t.Errorf("Path = %q, want suffix /files/test-123", r.URL.Path)
+		}
+		deleteReceived = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	err := provider.DeleteFile(context.Background(), "files/test-123")
+	if err != nil {
+		t.Fatalf("DeleteFile() error = %v", err)
+	}
+
+	if !deleteReceived {
+		t.Error("Delete request not received")
+	}
+}
+
+func TestDeleteFile_NotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(geminiErrorResponse{
+			Error: geminiError{Code: 404, Message: "Not found", Status: "NOT_FOUND"},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	err := provider.DeleteFile(context.Background(), "files/nonexistent")
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+}

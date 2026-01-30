@@ -220,3 +220,28 @@ func (p *Gemini) ListAllFiles(ctx context.Context) ([]File, error) {
 
 	return allFiles, nil
 }
+
+// DeleteFile deletes a file.
+func (p *Gemini) DeleteFile(ctx context.Context, name string) error {
+	url := p.config.BaseURL + "/v1beta/" + name
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("x-goog-api-key", p.config.APIKey)
+
+	resp, err := p.config.HTTPClient.Do(httpReq)
+	if err != nil {
+		return newNetworkError(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return normalizeError(resp.StatusCode, body)
+	}
+
+	return nil
+}
