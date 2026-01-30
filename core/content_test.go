@@ -108,3 +108,60 @@ func TestInputFileFields(t *testing.T) {
 		t.Errorf("Filename = %q, want %q", file.Filename, "document.pdf")
 	}
 }
+
+func TestMessageParts(t *testing.T) {
+	// Test that Message can hold multimodal Parts
+	msg := Message{
+		Role: RoleUser,
+		Parts: []ContentPart{
+			InputText{Text: "What's in this image?"},
+			InputImage{ImageURL: "https://example.com/photo.jpg", Detail: ImageDetailHigh},
+		},
+	}
+
+	if msg.Role != RoleUser {
+		t.Errorf("Role = %q, want %q", msg.Role, RoleUser)
+	}
+	if len(msg.Parts) != 2 {
+		t.Fatalf("len(Parts) = %d, want 2", len(msg.Parts))
+	}
+
+	// Verify first part is InputText
+	textPart, ok := msg.Parts[0].(InputText)
+	if !ok {
+		t.Fatalf("Parts[0] is not InputText, got %T", msg.Parts[0])
+	}
+	if textPart.Text != "What's in this image?" {
+		t.Errorf("Parts[0].Text = %q, want %q", textPart.Text, "What's in this image?")
+	}
+
+	// Verify second part is InputImage
+	imgPart, ok := msg.Parts[1].(InputImage)
+	if !ok {
+		t.Fatalf("Parts[1] is not InputImage, got %T", msg.Parts[1])
+	}
+	if imgPart.ImageURL != "https://example.com/photo.jpg" {
+		t.Errorf("Parts[1].ImageURL = %q, want %q", imgPart.ImageURL, "https://example.com/photo.jpg")
+	}
+	if imgPart.Detail != ImageDetailHigh {
+		t.Errorf("Parts[1].Detail = %q, want %q", imgPart.Detail, ImageDetailHigh)
+	}
+}
+
+func TestMessageBackwardCompatibility(t *testing.T) {
+	// Test that simple text messages still work with Content field
+	msg := Message{
+		Role:    RoleUser,
+		Content: "Hello, world!",
+	}
+
+	if msg.Role != RoleUser {
+		t.Errorf("Role = %q, want %q", msg.Role, RoleUser)
+	}
+	if msg.Content != "Hello, world!" {
+		t.Errorf("Content = %q, want %q", msg.Content, "Hello, world!")
+	}
+	if msg.Parts != nil {
+		t.Errorf("Parts should be nil for simple text messages, got %v", msg.Parts)
+	}
+}
