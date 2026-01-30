@@ -3,10 +3,13 @@ package gemini
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/erikhoward/iris/core"
 )
 
 func TestUploadFile(t *testing.T) {
@@ -65,5 +68,64 @@ func TestUploadFile(t *testing.T) {
 	}
 	if file.Name != "files/test-123" {
 		t.Errorf("File.Name = %q, want files/test-123", file.Name)
+	}
+}
+
+func TestGetFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("Method = %q, want GET", r.Method)
+		}
+		if !strings.HasSuffix(r.URL.Path, "/files/test-123") {
+			t.Errorf("Path = %q, want suffix /files/test-123", r.URL.Path)
+		}
+
+		json.NewEncoder(w).Encode(File{
+			Name:     "files/test-123",
+			MimeType: "text/plain",
+			State:    FileStateActive,
+			URI:      "https://example.com/files/test-123",
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	file, err := provider.GetFile(context.Background(), "files/test-123")
+	if err != nil {
+		t.Fatalf("GetFile() error = %v", err)
+	}
+
+	if file.Name != "files/test-123" {
+		t.Errorf("File.Name = %q, want files/test-123", file.Name)
+	}
+	if file.State != FileStateActive {
+		t.Errorf("File.State = %q, want ACTIVE", file.State)
+	}
+}
+
+func TestGetFile_NotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(geminiErrorResponse{
+			Error: geminiError{
+				Code:    404,
+				Message: "File not found",
+				Status:  "NOT_FOUND",
+			},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	_, err := provider.GetFile(context.Background(), "files/nonexistent")
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+
+	var provErr *core.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("Expected ProviderError, got %T", err)
 	}
 }
