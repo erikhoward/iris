@@ -204,14 +204,14 @@ func TestListAllFiles(t *testing.T) {
 		callCount++
 		pageToken := r.URL.Query().Get("pageToken")
 
-		switch {
-		case pageToken == "":
+		switch pageToken {
+		case "":
 			// First page
 			json.NewEncoder(w).Encode(FileListResponse{
 				Files:         []File{{Name: "files/1"}, {Name: "files/2"}},
 				NextPageToken: "page2",
 			})
-		case pageToken == "page2":
+		case "page2":
 			// Second page
 			json.NewEncoder(w).Encode(FileListResponse{
 				Files:         []File{{Name: "files/3"}},
