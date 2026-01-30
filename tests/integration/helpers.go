@@ -33,6 +33,78 @@ func getAPIKey(t *testing.T) string {
 	return key
 }
 
+// skipIfNoAnthropicKey skips the test if ANTHROPIC_API_KEY is not set.
+func skipIfNoAnthropicKey(t *testing.T) {
+	t.Helper()
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+}
+
+// getAnthropicKey returns the Anthropic API key from environment.
+func getAnthropicKey(t *testing.T) string {
+	t.Helper()
+	key := os.Getenv("ANTHROPIC_API_KEY")
+	if key == "" {
+		t.Fatal("ANTHROPIC_API_KEY not set")
+	}
+	return key
+}
+
+// skipIfNoGeminiKey skips the test if GEMINI_API_KEY is not set.
+func skipIfNoGeminiKey(t *testing.T) {
+	t.Helper()
+	if os.Getenv("GEMINI_API_KEY") == "" {
+		t.Skip("GEMINI_API_KEY not set")
+	}
+}
+
+// getGeminiKey returns the Gemini API key from environment.
+func getGeminiKey(t *testing.T) string {
+	t.Helper()
+	key := os.Getenv("GEMINI_API_KEY")
+	if key == "" {
+		t.Fatal("GEMINI_API_KEY not set")
+	}
+	return key
+}
+
+// skipIfNoZaiKey skips the test if ZAI_API_KEY is not set.
+func skipIfNoZaiKey(t *testing.T) {
+	t.Helper()
+	if os.Getenv("ZAI_API_KEY") == "" {
+		t.Skip("ZAI_API_KEY not set")
+	}
+}
+
+// getZaiKey returns the Z.ai API key from environment.
+func getZaiKey(t *testing.T) string {
+	t.Helper()
+	key := os.Getenv("ZAI_API_KEY")
+	if key == "" {
+		t.Fatal("ZAI_API_KEY not set")
+	}
+	return key
+}
+
+// skipIfNoXaiKey skips the test if XAI_API_KEY is not set.
+func skipIfNoXaiKey(t *testing.T) {
+	t.Helper()
+	if os.Getenv("XAI_API_KEY") == "" {
+		t.Skip("XAI_API_KEY not set")
+	}
+}
+
+// getXaiKey returns the xAI API key from environment.
+func getXaiKey(t *testing.T) string {
+	t.Helper()
+	key := os.Getenv("XAI_API_KEY")
+	if key == "" {
+		t.Fatal("XAI_API_KEY not set")
+	}
+	return key
+}
+
 // cliResult holds the result of running a CLI command.
 type cliResult struct {
 	Stdout   string
