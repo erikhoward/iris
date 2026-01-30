@@ -172,3 +172,31 @@ func (p *Anthropic) ListFiles(ctx context.Context, req *FileListRequest) (*FileL
 
 	return &result, nil
 }
+
+// ListAllFiles returns all files, handling pagination automatically.
+func (p *Anthropic) ListAllFiles(ctx context.Context) ([]File, error) {
+	var allFiles []File
+	var afterID *string
+	limit := 1000
+
+	for {
+		req := &FileListRequest{
+			Limit:   &limit,
+			AfterID: afterID,
+		}
+
+		resp, err := p.ListFiles(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+
+		allFiles = append(allFiles, resp.Data...)
+
+		if !resp.HasMore {
+			break
+		}
+		afterID = &resp.LastID
+	}
+
+	return allFiles, nil
+}

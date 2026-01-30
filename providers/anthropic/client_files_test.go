@@ -250,3 +250,42 @@ func TestListFilesNilRequest(t *testing.T) {
 		t.Error("expected empty slice, got nil")
 	}
 }
+
+func TestListAllFiles(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Header().Set("Content-Type", "application/json")
+
+		if callCount == 1 {
+			json.NewEncoder(w).Encode(FileListResponse{
+				Data:    []File{{ID: "file_1"}, {ID: "file_2"}},
+				FirstID: "file_1",
+				LastID:  "file_2",
+				HasMore: true,
+			})
+		} else {
+			json.NewEncoder(w).Encode(FileListResponse{
+				Data:    []File{{ID: "file_3"}},
+				FirstID: "file_3",
+				LastID:  "file_3",
+				HasMore: false,
+			})
+		}
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	files, err := provider.ListAllFiles(context.Background())
+	if err != nil {
+		t.Fatalf("ListAllFiles failed: %v", err)
+	}
+
+	if len(files) != 3 {
+		t.Errorf("expected 3 files, got %d", len(files))
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 API calls, got %d", callCount)
+	}
+}
