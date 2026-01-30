@@ -18,16 +18,6 @@ import (
 	"github.com/erikhoward/iris/providers/xai"
 	"github.com/erikhoward/iris/providers/zai"
 	"github.com/spf13/cobra"
-
-	// Register all providers for CLI discovery.
-	// The blank imports ensure init() runs and providers register themselves.
-	_ "github.com/erikhoward/iris/providers/anthropic"
-	_ "github.com/erikhoward/iris/providers/gemini"
-	_ "github.com/erikhoward/iris/providers/huggingface"
-	_ "github.com/erikhoward/iris/providers/ollama"
-	_ "github.com/erikhoward/iris/providers/openai"
-	_ "github.com/erikhoward/iris/providers/xai"
-	_ "github.com/erikhoward/iris/providers/zai"
 )
 
 // Exit codes
