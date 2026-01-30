@@ -480,3 +480,74 @@ func TestBuildResponsesRequestWithoutToolResources(t *testing.T) {
 		t.Error("expected ToolResources to be nil")
 	}
 }
+
+func TestBuildResponsesInputMultimodal(t *testing.T) {
+	tests := []struct {
+		name         string
+		messages     []core.Message
+		instructions string
+		wantJSON     string
+	}{
+		{
+			name: "simple text unchanged",
+			messages: []core.Message{
+				{Role: core.RoleUser, Content: "Hello"},
+			},
+			wantJSON: `"Hello"`,
+		},
+		{
+			name: "multimodal with image URL",
+			messages: []core.Message{
+				{
+					Role: core.RoleUser,
+					Parts: []core.ContentPart{
+						&core.InputText{Text: "What's in this image?"},
+						&core.InputImage{ImageURL: "https://example.com/cat.jpg"},
+					},
+				},
+			},
+			wantJSON: `[{"role":"user","content":[{"type":"input_text","text":"What's in this image?"},{"type":"input_image","image_url":"https://example.com/cat.jpg"}]}]`,
+		},
+		{
+			name: "multimodal with file_id",
+			messages: []core.Message{
+				{
+					Role: core.RoleUser,
+					Parts: []core.ContentPart{
+						&core.InputText{Text: "Analyze this document"},
+						&core.InputFile{FileID: "file-abc123"},
+					},
+				},
+			},
+			wantJSON: `[{"role":"user","content":[{"type":"input_text","text":"Analyze this document"},{"type":"input_file","file_id":"file-abc123"}]}]`,
+		},
+		{
+			name: "image with detail",
+			messages: []core.Message{
+				{
+					Role: core.RoleUser,
+					Parts: []core.ContentPart{
+						&core.InputImage{
+							ImageURL: "https://example.com/cat.jpg",
+							Detail:   core.ImageDetailHigh,
+						},
+					},
+				},
+			},
+			wantJSON: `[{"role":"user","content":[{"type":"input_image","image_url":"https://example.com/cat.jpg","detail":"high"}]}]`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := buildResponsesInput(tt.messages, tt.instructions)
+			got, err := json.Marshal(input)
+			if err != nil {
+				t.Fatalf("Marshal error: %v", err)
+			}
+			if string(got) != tt.wantJSON {
+				t.Errorf("got %s, want %s", got, tt.wantJSON)
+			}
+		})
+	}
+}
