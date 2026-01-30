@@ -289,3 +289,206 @@ func TestHuggingFace_ListModels_ByProvider(t *testing.T) {
 		t.Logf("  - %s", m.ID)
 	}
 }
+
+func TestHuggingFace_ChatCompletion_SystemMessage(t *testing.T) {
+	skipIfNoHFToken(t)
+
+	token := getHFToken(t)
+	provider := huggingface.New(token)
+	client := core.NewClient(provider)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	resp, err := client.Chat("meta-llama/Llama-3.1-8B-Instruct").
+		System("You are a pirate. Always respond in pirate speak.").
+		User("Say hello.").
+		GetResponse(ctx)
+
+	if err != nil {
+		t.Fatalf("Chat() error = %v", err)
+	}
+
+	if resp.Output == "" {
+		t.Error("Response output is empty")
+	}
+
+	// The output should contain pirate-like language
+	output := strings.ToLower(resp.Output)
+	pirateWords := []string{"ahoy", "matey", "arr", "aye", "ye", "ship", "sail", "sea"}
+
+	hasPirateWord := false
+	for _, word := range pirateWords {
+		if strings.Contains(output, word) {
+			hasPirateWord = true
+			break
+		}
+	}
+
+	if !hasPirateWord {
+		t.Logf("Note: Response may not be in pirate speak: %s", resp.Output)
+	}
+
+	t.Logf("Response: %s", resp.Output)
+}
+
+func TestHuggingFace_ChatCompletion_Temperature(t *testing.T) {
+	skipIfNoHFToken(t)
+
+	token := getHFToken(t)
+	provider := huggingface.New(token)
+	client := core.NewClient(provider)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// Low temperature should give more deterministic output
+	resp, err := client.Chat("meta-llama/Llama-3.1-8B-Instruct").
+		User("What is 2+2? Reply with just the number.").
+		Temperature(0.01). // Some models don't support exactly 0
+		GetResponse(ctx)
+
+	if err != nil {
+		t.Fatalf("Chat() error = %v", err)
+	}
+
+	if resp.Output == "" {
+		t.Error("Response output is empty")
+	}
+
+	// Should contain "4"
+	if !strings.Contains(resp.Output, "4") {
+		t.Logf("Note: Expected response to contain '4', got: %s", resp.Output)
+	}
+
+	t.Logf("Response: %s", resp.Output)
+}
+
+func TestHuggingFace_ChatCompletion_MaxTokens(t *testing.T) {
+	skipIfNoHFToken(t)
+
+	token := getHFToken(t)
+	provider := huggingface.New(token)
+	client := core.NewClient(provider)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// Very low max tokens should truncate response
+	resp, err := client.Chat("meta-llama/Llama-3.1-8B-Instruct").
+		User("Write a long story about a dragon.").
+		MaxTokens(20).
+		GetResponse(ctx)
+
+	if err != nil {
+		t.Fatalf("Chat() error = %v", err)
+	}
+
+	if resp.Output == "" {
+		t.Error("Response output is empty")
+	}
+
+	// Response should be short due to max tokens
+	if resp.Usage.CompletionTokens > 25 { // Allow some buffer
+		t.Logf("Note: Completion tokens %d exceeds expected max ~20", resp.Usage.CompletionTokens)
+	}
+
+	t.Logf("Response: %s", resp.Output)
+	t.Logf("Completion tokens: %d", resp.Usage.CompletionTokens)
+}
+
+func TestHuggingFace_ChatCompletion_MultipleMessages(t *testing.T) {
+	skipIfNoHFToken(t)
+
+	token := getHFToken(t)
+	provider := huggingface.New(token)
+	client := core.NewClient(provider)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	resp, err := client.Chat("meta-llama/Llama-3.1-8B-Instruct").
+		User("My name is Alice.").
+		Assistant("Nice to meet you, Alice!").
+		User("What's my name?").
+		GetResponse(ctx)
+
+	if err != nil {
+		t.Fatalf("Chat() error = %v", err)
+	}
+
+	if resp.Output == "" {
+		t.Error("Response output is empty")
+	}
+
+	// The response should remember the user's name
+	output := strings.ToLower(resp.Output)
+	if !strings.Contains(output, "alice") {
+		t.Logf("Note: Expected response to contain 'Alice', got: %s", resp.Output)
+	}
+
+	t.Logf("Response: %s", resp.Output)
+}
+
+func TestHuggingFace_ChatCompletion_WithCheapestPolicy(t *testing.T) {
+	skipIfNoHFToken(t)
+
+	token := getHFToken(t)
+	// Use cheapest provider policy
+	provider := huggingface.New(token, huggingface.WithProviderPolicy(huggingface.PolicyCheapest))
+	client := core.NewClient(provider)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	resp, err := client.Chat("meta-llama/Llama-3.1-8B-Instruct").
+		User("What is 5+5? Reply with just the number.").
+		GetResponse(ctx)
+
+	if err != nil {
+		t.Fatalf("Chat() error = %v", err)
+	}
+
+	if resp.Output == "" {
+		t.Error("Response output is empty")
+	}
+
+	// Should contain "10"
+	if !strings.Contains(resp.Output, "10") {
+		t.Logf("Note: Expected response to contain '10', got: %s", resp.Output)
+	}
+
+	t.Logf("Response: %s", resp.Output)
+}
+
+func TestHuggingFace_ChatCompletion_QwenModel(t *testing.T) {
+	skipIfNoHFToken(t)
+
+	token := getHFToken(t)
+	provider := huggingface.New(token)
+	client := core.NewClient(provider)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// Test with a different model family (Qwen)
+	resp, err := client.Chat("Qwen/Qwen2.5-7B-Instruct").
+		User("What is the capital of France? Answer in one word.").
+		GetResponse(ctx)
+
+	if err != nil {
+		t.Fatalf("Chat() error = %v", err)
+	}
+
+	if resp.Output == "" {
+		t.Error("Response output is empty")
+	}
+
+	output := strings.ToLower(resp.Output)
+	if !strings.Contains(output, "paris") {
+		t.Logf("Note: Expected response to contain 'paris', got: %s", resp.Output)
+	}
+
+	t.Logf("Response: %s", resp.Output)
+	t.Logf("Model: Qwen/Qwen2.5-7B-Instruct")
+}
