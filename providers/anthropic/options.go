@@ -24,6 +24,9 @@ type Config struct {
 
 	// Timeout is the optional request timeout.
 	Timeout time.Duration
+
+	// FilesAPIBeta is the beta version for Files API. Defaults to DefaultFilesAPIBeta.
+	FilesAPIBeta string
 }
 
 // DefaultBaseURL is the default Anthropic API base URL.
@@ -31,6 +34,9 @@ const DefaultBaseURL = "https://api.anthropic.com"
 
 // DefaultVersion is the default Anthropic API version.
 const DefaultVersion = "2023-06-01"
+
+// DefaultFilesAPIBeta is the default beta version for the Files API.
+const DefaultFilesAPIBeta = "files-api-2025-04-14"
 
 // Option configures the Anthropic provider.
 type Option func(*Config)
@@ -70,5 +76,12 @@ func WithHeader(key, value string) Option {
 func WithTimeout(d time.Duration) Option {
 	return func(c *Config) {
 		c.Timeout = d
+	}
+}
+
+// WithFilesAPIBeta sets the beta version header for Files API operations.
+func WithFilesAPIBeta(version string) Option {
+	return func(c *Config) {
+		c.FilesAPIBeta = version
 	}
 }

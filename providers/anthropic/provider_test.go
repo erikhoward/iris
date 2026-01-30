@@ -217,3 +217,10 @@ func TestModelCapabilities(t *testing.T) {
 func TestProviderImplementsInterface(t *testing.T) {
 	var _ core.Provider = (*Anthropic)(nil)
 }
+
+func TestNewWithDefaultFilesAPIBeta(t *testing.T) {
+	p := New("test-key")
+	if p.config.FilesAPIBeta != DefaultFilesAPIBeta {
+		t.Errorf("expected FilesAPIBeta %q, got %q", DefaultFilesAPIBeta, p.config.FilesAPIBeta)
+	}
+}
