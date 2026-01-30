@@ -13,6 +13,7 @@ const (
 	FeatureReasoning     Feature = "reasoning"
 	FeatureBuiltInTools  Feature = "builtin_tools"
 	FeatureResponseChain Feature = "response_chain"
+	FeatureEmbeddings    Feature = "embeddings"
 )
 
 // APIEndpoint represents which API endpoint a model uses.

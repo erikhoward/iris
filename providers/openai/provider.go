@@ -44,7 +44,7 @@ func (p *OpenAI) Models() []core.ModelInfo {
 // Supports reports whether the provider supports the given feature.
 func (p *OpenAI) Supports(feature core.Feature) bool {
 	switch feature {
-	case core.FeatureChat, core.FeatureChatStreaming, core.FeatureToolCalling, core.FeatureImageGeneration:
+	case core.FeatureChat, core.FeatureChatStreaming, core.FeatureToolCalling, core.FeatureImageGeneration, core.FeatureEmbeddings:
 		return true
 	default:
 		return false
@@ -114,3 +114,6 @@ var _ core.Provider = (*OpenAI)(nil)
 
 // Compile-time check that OpenAI implements ImageGenerator.
 var _ core.ImageGenerator = (*OpenAI)(nil)
+
+// Compile-time check that OpenAI implements EmbeddingProvider.
+var _ core.EmbeddingProvider = (*OpenAI)(nil)
