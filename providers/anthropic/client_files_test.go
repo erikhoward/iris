@@ -3,11 +3,14 @@ package anthropic
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/erikhoward/iris/core"
 )
 
 func TestBuildFilesHeaders(t *testing.T) {
@@ -108,5 +111,72 @@ func TestUploadFile(t *testing.T) {
 	}
 	if result.Downloadable != false {
 		t.Errorf("expected Downloadable false, got %v", result.Downloadable)
+	}
+}
+
+func TestGetFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/v1/files/file_011CNha8iCJcU1wXNR6q4V8w" {
+			t.Errorf("expected /v1/files/file_011CNha8iCJcU1wXNR6q4V8w, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(File{
+			ID:           "file_011CNha8iCJcU1wXNR6q4V8w",
+			Type:         "file",
+			Filename:     "test.pdf",
+			MimeType:     "application/pdf",
+			SizeBytes:    1024,
+			CreatedAt:    "2025-04-14T12:00:00Z",
+			Downloadable: false,
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	result, err := provider.GetFile(context.Background(), "file_011CNha8iCJcU1wXNR6q4V8w")
+	if err != nil {
+		t.Fatalf("GetFile failed: %v", err)
+	}
+
+	if result.ID != "file_011CNha8iCJcU1wXNR6q4V8w" {
+		t.Errorf("expected ID 'file_011CNha8iCJcU1wXNR6q4V8w', got %q", result.ID)
+	}
+	if result.SizeBytes != 1024 {
+		t.Errorf("expected SizeBytes 1024, got %d", result.SizeBytes)
+	}
+}
+
+func TestGetFileNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]any{
+			"type": "error",
+			"error": map[string]any{
+				"type":    "not_found_error",
+				"message": "File not found",
+			},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	_, err := provider.GetFile(context.Background(), "file-nonexistent")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var provErr *core.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("expected ProviderError, got %T", err)
+	}
+	if !errors.Is(provErr, core.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", provErr.Err)
 	}
 }

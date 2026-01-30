@@ -78,3 +78,41 @@ func (p *Anthropic) UploadFile(ctx context.Context, req *FileUploadRequest) (*Fi
 
 	return &file, nil
 }
+
+// GetFile retrieves metadata for a specific file.
+func (p *Anthropic) GetFile(ctx context.Context, fileID string) (*File, error) {
+	url := p.config.BaseURL + filesPath + "/" + fileID
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	for key, values := range p.buildFilesHeaders() {
+		for _, v := range values {
+			httpReq.Header.Add(key, v)
+		}
+	}
+
+	resp, err := p.config.HTTPClient.Do(httpReq)
+	if err != nil {
+		return nil, newNetworkError(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, newNetworkError(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, normalizeError(resp.StatusCode, body, resp.Header.Get("request-id"))
+	}
+
+	var file File
+	if err := json.Unmarshal(body, &file); err != nil {
+		return nil, newDecodeError(err)
+	}
+
+	return &file, nil
+}
