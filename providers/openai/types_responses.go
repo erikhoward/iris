@@ -63,6 +63,27 @@ type responsesInputMessage struct {
 	Content string `json:"content"`
 }
 
+// responsesContentPart represents a content part in a Responses API input message.
+// Type determines which fields are used.
+type responsesContentPart struct {
+	Type string `json:"type"`
+
+	// For input_text
+	Text string `json:"text,omitempty"`
+
+	// For input_image
+	ImageURL string `json:"image_url,omitempty"` // URL or data URL
+	Detail   string `json:"detail,omitempty"`    // auto, low, high
+
+	// For input_image and input_file
+	FileID string `json:"file_id,omitempty"`
+
+	// For input_file
+	FileURL  string `json:"file_url,omitempty"`
+	FileData string `json:"file_data,omitempty"`
+	Filename string `json:"filename,omitempty"`
+}
+
 // responsesTool represents a tool in the Responses API.
 type responsesTool struct {
 	Type        string          `json:"type"`
