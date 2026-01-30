@@ -24,6 +24,13 @@ type geminiPart struct {
 	FunctionResponse *geminiFunctionResp `json:"functionResponse,omitempty"`
 	Thought          *bool               `json:"thought,omitempty"`
 	InlineData       *geminiInlineData   `json:"inlineData,omitempty"`
+	FileData         *geminiFileData     `json:"fileData,omitempty"`
+}
+
+// geminiFileData represents a reference to an uploaded file.
+type geminiFileData struct {
+	MimeType string `json:"mime_type,omitempty"`
+	FileURI  string `json:"file_uri"`
 }
 
 // geminiGenConfig holds generation configuration.
