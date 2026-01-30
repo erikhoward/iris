@@ -180,3 +180,73 @@ func TestGetFileNotFound(t *testing.T) {
 		t.Errorf("expected ErrNotFound, got %v", provErr.Err)
 	}
 }
+
+func TestListFiles(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/v1/files" {
+			t.Errorf("expected /v1/files, got %s", r.URL.Path)
+		}
+
+		if r.URL.Query().Get("limit") != "10" {
+			t.Errorf("expected limit=10, got %s", r.URL.Query().Get("limit"))
+		}
+		if r.URL.Query().Get("after_id") != "file_prev" {
+			t.Errorf("expected after_id=file_prev, got %s", r.URL.Query().Get("after_id"))
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(FileListResponse{
+			Data: []File{
+				{ID: "file_1", Type: "file", Filename: "a.txt"},
+				{ID: "file_2", Type: "file", Filename: "b.txt"},
+			},
+			FirstID: "file_1",
+			LastID:  "file_2",
+			HasMore: false,
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	limit := 10
+	afterID := "file_prev"
+	result, err := provider.ListFiles(context.Background(), &FileListRequest{
+		Limit:   &limit,
+		AfterID: &afterID,
+	})
+	if err != nil {
+		t.Fatalf("ListFiles failed: %v", err)
+	}
+
+	if len(result.Data) != 2 {
+		t.Errorf("expected 2 files, got %d", len(result.Data))
+	}
+	if result.Data[0].ID != "file_1" {
+		t.Errorf("expected file_1, got %s", result.Data[0].ID)
+	}
+}
+
+func TestListFilesNilRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(FileListResponse{
+			Data: []File{},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	result, err := provider.ListFiles(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("ListFiles failed: %v", err)
+	}
+
+	if result.Data == nil {
+		t.Error("expected empty slice, got nil")
+	}
+}

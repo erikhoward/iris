@@ -8,6 +8,8 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 // filesPath is the API endpoint for files.
@@ -115,4 +117,58 @@ func (p *Anthropic) GetFile(ctx context.Context, fileID string) (*File, error) {
 	}
 
 	return &file, nil
+}
+
+// ListFiles returns a paginated list of files.
+func (p *Anthropic) ListFiles(ctx context.Context, req *FileListRequest) (*FileListResponse, error) {
+	url := p.config.BaseURL + filesPath
+
+	if req != nil {
+		params := make([]string, 0)
+		if req.Limit != nil {
+			params = append(params, "limit="+strconv.Itoa(*req.Limit))
+		}
+		if req.BeforeID != nil {
+			params = append(params, "before_id="+*req.BeforeID)
+		}
+		if req.AfterID != nil {
+			params = append(params, "after_id="+*req.AfterID)
+		}
+		if len(params) > 0 {
+			url += "?" + strings.Join(params, "&")
+		}
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	for key, values := range p.buildFilesHeaders() {
+		for _, v := range values {
+			httpReq.Header.Add(key, v)
+		}
+	}
+
+	resp, err := p.config.HTTPClient.Do(httpReq)
+	if err != nil {
+		return nil, newNetworkError(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, newNetworkError(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, normalizeError(resp.StatusCode, body, resp.Header.Get("request-id"))
+	}
+
+	var result FileListResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, newDecodeError(err)
+	}
+
+	return &result, nil
 }
