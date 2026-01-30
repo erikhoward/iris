@@ -881,3 +881,36 @@ func TestBackwardCompatibilitySimpleUser(t *testing.T) {
 		t.Errorf("Parts should be empty for simple messages, got %d", len(msg.Parts))
 	}
 }
+
+func TestValidateMultimodalMessage(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	// Message with Parts should be valid
+	builder := client.Chat("test-model").
+		UserMultimodal().
+		Text("Hello").
+		Done()
+
+	err := builder.validate()
+	if err != nil {
+		t.Errorf("validate() = %v, want nil", err)
+	}
+}
+
+func TestValidateEmptyMessage(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	// Direct manipulation to test edge case - message with neither Content nor Parts
+	builder := client.Chat("test-model")
+	builder.req.Messages = append(builder.req.Messages, Message{
+		Role: RoleUser,
+		// Both Content and Parts are empty
+	})
+
+	err := builder.validate()
+	if err == nil {
+		t.Error("validate() should fail for empty message")
+	}
+}

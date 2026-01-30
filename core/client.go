@@ -205,6 +205,14 @@ func (b *ChatBuilder) validate() error {
 	if len(b.req.Messages) == 0 {
 		return ErrNoMessages
 	}
+
+	// Validate each message has content (either Content string or Parts)
+	for _, msg := range b.req.Messages {
+		if msg.Content == "" && len(msg.Parts) == 0 {
+			return ErrNoMessages
+		}
+	}
+
 	return nil
 }
 
