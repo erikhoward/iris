@@ -33,6 +33,24 @@ func getAPIKey(t *testing.T) string {
 	return key
 }
 
+// skipIfNoAnthropicKey skips the test if ANTHROPIC_API_KEY is not set.
+func skipIfNoAnthropicKey(t *testing.T) {
+	t.Helper()
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+}
+
+// getAnthropicKey returns the Anthropic API key from environment.
+func getAnthropicKey(t *testing.T) string {
+	t.Helper()
+	key := os.Getenv("ANTHROPIC_API_KEY")
+	if key == "" {
+		t.Fatal("ANTHROPIC_API_KEY not set")
+	}
+	return key
+}
+
 // cliResult holds the result of running a CLI command.
 type cliResult struct {
 	Stdout   string
