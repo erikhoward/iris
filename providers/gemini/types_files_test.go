@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -63,5 +64,29 @@ func TestFileListResponse_JSONUnmarshal(t *testing.T) {
 	}
 	if resp.NextPageToken != "token123" {
 		t.Errorf("NextPageToken = %q, want token123", resp.NextPageToken)
+	}
+}
+
+func TestGeminiFileData_JSONMarshal(t *testing.T) {
+	part := geminiPart{
+		FileData: &geminiFileData{
+			MimeType: "application/pdf",
+			FileURI:  "https://generativelanguage.googleapis.com/v1beta/files/abc-123",
+		},
+	}
+
+	data, err := json.Marshal(part)
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+
+	expected := `"fileData":`
+	if !strings.Contains(string(data), expected) {
+		t.Errorf("JSON = %s, missing fileData key", string(data))
+	}
+
+	expected = `"file_uri":`
+	if !strings.Contains(string(data), expected) {
+		t.Errorf("JSON = %s, missing file_uri key", string(data))
 	}
 }
