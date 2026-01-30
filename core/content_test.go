@@ -54,7 +54,7 @@ func TestInputFileContentType(t *testing.T) {
 
 func TestContentPartInterface(t *testing.T) {
 	// Verify all types implement ContentPart interface
-	var parts []ContentPart = []ContentPart{
+	parts := []ContentPart{
 		InputText{Text: "test"},
 		InputImage{ImageURL: "https://example.com/img.png"},
 		InputFile{FileID: "file-123"},
