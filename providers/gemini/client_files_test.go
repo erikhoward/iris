@@ -129,3 +129,70 @@ func TestGetFile_NotFound(t *testing.T) {
 		t.Fatalf("Expected ProviderError, got %T", err)
 	}
 }
+
+func TestListFiles(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("Method = %q, want GET", r.Method)
+		}
+		if !strings.HasSuffix(r.URL.Path, "/files") {
+			t.Errorf("Path = %q, want suffix /files", r.URL.Path)
+		}
+
+		// Verify query params
+		if r.URL.Query().Get("pageSize") != "10" {
+			t.Errorf("pageSize = %q, want 10", r.URL.Query().Get("pageSize"))
+		}
+
+		json.NewEncoder(w).Encode(FileListResponse{
+			Files: []File{
+				{Name: "files/1", State: FileStateActive},
+				{Name: "files/2", State: FileStateProcessing},
+			},
+			NextPageToken: "next-token",
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	resp, err := provider.ListFiles(context.Background(), &FileListRequest{
+		PageSize: 10,
+	})
+	if err != nil {
+		t.Fatalf("ListFiles() error = %v", err)
+	}
+
+	if len(resp.Files) != 2 {
+		t.Errorf("len(Files) = %d, want 2", len(resp.Files))
+	}
+	if resp.NextPageToken != "next-token" {
+		t.Errorf("NextPageToken = %q, want next-token", resp.NextPageToken)
+	}
+}
+
+func TestListFiles_WithPageToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("pageToken") != "some-token" {
+			t.Errorf("pageToken = %q, want some-token", r.URL.Query().Get("pageToken"))
+		}
+
+		json.NewEncoder(w).Encode(FileListResponse{
+			Files: []File{{Name: "files/3", State: FileStateActive}},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	resp, err := provider.ListFiles(context.Background(), &FileListRequest{
+		PageToken: "some-token",
+	})
+	if err != nil {
+		t.Fatalf("ListFiles() error = %v", err)
+	}
+
+	if len(resp.Files) != 1 {
+		t.Errorf("len(Files) = %d, want 1", len(resp.Files))
+	}
+}

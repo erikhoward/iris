@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -144,4 +145,51 @@ func (p *Gemini) GetFile(ctx context.Context, name string) (*File, error) {
 	}
 
 	return &file, nil
+}
+
+// ListFiles returns a paginated list of files.
+func (p *Gemini) ListFiles(ctx context.Context, req *FileListRequest) (*FileListResponse, error) {
+	url := p.config.BaseURL + filesPath
+
+	if req != nil {
+		params := make([]string, 0)
+		if req.PageSize > 0 {
+			params = append(params, "pageSize="+strconv.Itoa(req.PageSize))
+		}
+		if req.PageToken != "" {
+			params = append(params, "pageToken="+req.PageToken)
+		}
+		if len(params) > 0 {
+			url += "?" + strings.Join(params, "&")
+		}
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("x-goog-api-key", p.config.APIKey)
+
+	resp, err := p.config.HTTPClient.Do(httpReq)
+	if err != nil {
+		return nil, newNetworkError(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, newNetworkError(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, normalizeError(resp.StatusCode, body)
+	}
+
+	var result FileListResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, newDecodeError(err)
+	}
+
+	return &result, nil
 }
