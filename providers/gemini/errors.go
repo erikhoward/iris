@@ -2,9 +2,19 @@ package gemini
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/erikhoward/iris/core"
+)
+
+// File-specific error sentinels.
+var (
+	// ErrFileProcessing indicates the file is still being processed.
+	ErrFileProcessing = errors.New("file is still processing")
+
+	// ErrFileFailed indicates file processing failed.
+	ErrFileFailed = errors.New("file processing failed")
 )
 
 // normalizeError converts an HTTP error response to a ProviderError with the appropriate sentinel.
