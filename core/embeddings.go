@@ -12,6 +12,34 @@ const (
 	EncodingFormatBase64 EncodingFormat = "base64"
 )
 
+// InputType specifies the type of input for retrieval optimization.
+type InputType string
+
+const (
+	// InputTypeNone uses default embedding without retrieval optimization.
+	InputTypeNone InputType = ""
+	// InputTypeQuery optimizes embeddings for search queries.
+	InputTypeQuery InputType = "query"
+	// InputTypeDocument optimizes embeddings for documents being searched.
+	InputTypeDocument InputType = "document"
+)
+
+// OutputDType specifies the data type for embedding vectors.
+type OutputDType string
+
+const (
+	// OutputDTypeFloat returns 32-bit floating point numbers (default).
+	OutputDTypeFloat OutputDType = "float"
+	// OutputDTypeInt8 returns 8-bit signed integers (-128 to 127).
+	OutputDTypeInt8 OutputDType = "int8"
+	// OutputDTypeUint8 returns 8-bit unsigned integers (0 to 255).
+	OutputDTypeUint8 OutputDType = "uint8"
+	// OutputDTypeBinary returns bit-packed signed integers.
+	OutputDTypeBinary OutputDType = "binary"
+	// OutputDTypeUbinary returns bit-packed unsigned integers.
+	OutputDTypeUbinary OutputDType = "ubinary"
+)
+
 // EmbeddingInput represents a single text to embed with optional metadata.
 type EmbeddingInput struct {
 	Text     string            `json:"text"`
@@ -26,6 +54,9 @@ type EmbeddingRequest struct {
 	EncodingFormat EncodingFormat   `json:"encoding_format,omitempty"`
 	Dimensions     *int             `json:"dimensions,omitempty"`
 	User           string           `json:"user,omitempty"`
+	InputType      InputType        `json:"input_type,omitempty"`
+	OutputDType    OutputDType      `json:"output_dtype,omitempty"`
+	Truncation     *bool            `json:"truncation,omitempty"`
 }
 
 // EmbeddingVector represents a single embedding result.

@@ -39,6 +39,7 @@ var (
 	ErrServer       = errors.New("server error")
 	ErrNetwork      = errors.New("network error")
 	ErrDecode       = errors.New("decode error")
+	ErrNotSupported = errors.New("operation not supported")
 )
 
 // Validation errors.

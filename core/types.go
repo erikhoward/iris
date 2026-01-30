@@ -7,13 +7,15 @@ import "encoding/json"
 type Feature string
 
 const (
-	FeatureChat          Feature = "chat"
-	FeatureChatStreaming Feature = "chat_streaming"
-	FeatureToolCalling   Feature = "tool_calling"
-	FeatureReasoning     Feature = "reasoning"
-	FeatureBuiltInTools  Feature = "builtin_tools"
-	FeatureResponseChain Feature = "response_chain"
-	FeatureEmbeddings    Feature = "embeddings"
+	FeatureChat                     Feature = "chat"
+	FeatureChatStreaming            Feature = "chat_streaming"
+	FeatureToolCalling              Feature = "tool_calling"
+	FeatureReasoning                Feature = "reasoning"
+	FeatureBuiltInTools             Feature = "builtin_tools"
+	FeatureResponseChain            Feature = "response_chain"
+	FeatureEmbeddings               Feature = "embeddings"
+	FeatureContextualizedEmbeddings Feature = "contextualized_embeddings"
+	FeatureReranking                Feature = "reranking"
 )
 
 // APIEndpoint represents which API endpoint a model uses.
