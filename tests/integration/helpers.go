@@ -87,6 +87,24 @@ func getZaiKey(t *testing.T) string {
 	return key
 }
 
+// skipIfNoXaiKey skips the test if XAI_API_KEY is not set.
+func skipIfNoXaiKey(t *testing.T) {
+	t.Helper()
+	if os.Getenv("XAI_API_KEY") == "" {
+		t.Skip("XAI_API_KEY not set")
+	}
+}
+
+// getXaiKey returns the xAI API key from environment.
+func getXaiKey(t *testing.T) string {
+	t.Helper()
+	key := os.Getenv("XAI_API_KEY")
+	if key == "" {
+		t.Fatal("XAI_API_KEY not set")
+	}
+	return key
+}
+
 // cliResult holds the result of running a CLI command.
 type cliResult struct {
 	Stdout   string
