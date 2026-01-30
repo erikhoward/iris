@@ -2,6 +2,14 @@
 
 This directory contains runnable examples demonstrating the Iris SDK features.
 
+## Module Structure
+
+Examples are in a separate Go module (`github.com/erikhoward/iris/examples`) that depends on the main Iris SDK. The project uses a Go workspace (`go.work`) for seamless local development.
+
+You can run examples from either:
+- **Project root**: Uses the workspace to resolve the local SDK
+- **Examples directory**: Uses the `replace` directive in `go.mod`
+
 ## Prerequisites
 
 - Go 1.24 or later
@@ -74,7 +82,9 @@ go run main.go
 
 ## Running All Examples
 
-From the project root directory:
+### From Project Root (Recommended)
+
+The Go workspace (`go.work`) allows running examples directly:
 
 ```bash
 # Build all examples to check for compilation errors
@@ -87,6 +97,19 @@ go run ./examples/chat/system-message
 go run ./examples/chat/conversation
 go run ./examples/tools/weather
 go run ./examples/agents/simple
+```
+
+### From Examples Directory
+
+You can also run from within the examples directory:
+
+```bash
+cd examples
+
+# Run examples
+go run ./chat/basic
+go run ./chat/streaming
+go run ./tools/weather
 ```
 
 ## Example Output

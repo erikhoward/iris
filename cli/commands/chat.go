@@ -9,6 +9,7 @@ import (
 
 	"github.com/erikhoward/iris/cli/keystore"
 	"github.com/erikhoward/iris/core"
+	"github.com/erikhoward/iris/providers"
 	"github.com/erikhoward/iris/providers/anthropic"
 	"github.com/erikhoward/iris/providers/gemini"
 	"github.com/erikhoward/iris/providers/huggingface"
@@ -263,7 +264,11 @@ func createProvider(providerID, apiKey string) (core.Provider, error) {
 		}
 		return huggingface.New(apiKey, opts...), nil
 	default:
-		return nil, fmt.Errorf("unsupported provider: %s", providerID)
+		// Try the registry for any additional providers
+		if providers.IsRegistered(providerID) {
+			return providers.Create(providerID, apiKey)
+		}
+		return nil, fmt.Errorf("unsupported provider: %s (available: %v)", providerID, providers.List())
 	}
 }
 

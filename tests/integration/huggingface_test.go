@@ -14,10 +14,11 @@ import (
 )
 
 // skipIfNoHFToken skips the test if HF_TOKEN is not set.
+// In CI, it fails unless IRIS_SKIP_INTEGRATION is set.
 func skipIfNoHFToken(t *testing.T) {
 	t.Helper()
 	if os.Getenv("HF_TOKEN") == "" && os.Getenv("IRIS_HF_TOKEN") == "" {
-		t.Skip("HF_TOKEN or IRIS_HF_TOKEN not set")
+		skipOrFailOnMissingKey(t, "HF_TOKEN or IRIS_HF_TOKEN")
 	}
 }
 

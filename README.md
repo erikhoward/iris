@@ -711,23 +711,40 @@ make install-hooks
 ### Makefile Commands
 
 ```bash
-make build        # Build all packages
-make test         # Run all tests
-make test-v       # Run tests with verbose output
-make test-cover   # Run tests with coverage
-make lint         # Check formatting and run go vet
-make fmt          # Auto-fix formatting issues
-make vet          # Run go vet
-make install-hooks # Install git pre-commit hooks
-make build-cli    # Build CLI to bin/iris
-make install-cli  # Install CLI locally
-make help         # Show all available commands
+make build          # Build all packages
+make test           # Run all tests
+make test-v         # Run tests with verbose output
+make test-cover     # Run tests with coverage
+make lint           # Check formatting and run go vet
+make fmt            # Auto-fix formatting issues
+make vet            # Run go vet
+make install-hooks  # Install git pre-commit hooks
+make build-cli      # Build CLI to bin/iris (with version info)
+make install-cli    # Install CLI locally (with version info)
+make test-integration # Run integration tests
+make help           # Show all available commands
+```
+
+### Building the CLI
+
+The CLI is built with version information injected at build time:
+
+```bash
+# Build with version info
+make build-cli
+
+# Check version
+./bin/iris version
+# Output: iris v0.3.0 (abc1234) built 2026-01-30T12:00:00Z
+
+# JSON output
+./bin/iris version --json
 ```
 
 ### Building (without Make)
 
 ```bash
-# Build everything
+# Build everything (SDK + examples)
 go build ./...
 
 # Run tests
@@ -739,9 +756,47 @@ gofmt -l .
 # Fix formatting
 gofmt -w .
 
-# Run integration tests (requires IRIS_OPENAI_API_KEY)
+# Build CLI with version injection
+VERSION=$(git describe --tags --always --dirty)
+COMMIT=$(git rev-parse --short HEAD)
+DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+go build -ldflags "-X github.com/erikhoward/iris/cli/commands.Version=$VERSION \
+  -X github.com/erikhoward/iris/cli/commands.Commit=$COMMIT \
+  -X github.com/erikhoward/iris/cli/commands.BuildDate=$DATE" \
+  -o bin/iris ./cli/cmd/iris
+```
+
+### Running Tests
+
+```bash
+# Run unit tests
+go test ./...
+
+# Run with verbose output
+go test -v ./...
+
+# Run with coverage
+go test -cover ./...
+```
+
+### Integration Tests
+
+Integration tests require API keys and make real API calls:
+
+```bash
+# Set required environment variables
+export OPENAI_API_KEY=your-key
+export ANTHROPIC_API_KEY=your-key  # optional
+export GEMINI_API_KEY=your-key     # optional
+export XAI_API_KEY=your-key        # optional
+export ZAI_API_KEY=your-key        # optional
+export HF_TOKEN=your-token         # optional
+
+# Run integration tests
 go test -tags=integration ./tests/integration/...
 ```
+
+**CI Behavior**: In CI environments, integration tests fail loudly if required secrets are missing (instead of silently skipping). Set `IRIS_SKIP_INTEGRATION=1` to explicitly skip integration tests in CI.
 
 ### Git Hooks
 
@@ -758,7 +813,19 @@ This prevents CI failures due to formatting issues.
 
 ### Module Structure
 
-Iris uses a single Go module at the repository root. All packages are imported from `github.com/erikhoward/iris/*`:
+Iris uses a Go workspace with two modules:
+
+```
+iris/
+├── go.mod        # Main SDK module (github.com/erikhoward/iris)
+├── go.work       # Workspace file for local development
+└── examples/
+    └── go.mod    # Examples module (github.com/erikhoward/iris/examples)
+```
+
+The workspace allows you to develop on both modules simultaneously. When you run `go build ./...` or `go test ./...` from the root, it builds/tests both modules.
+
+**Importing the SDK:**
 
 ```go
 import (
@@ -772,6 +839,43 @@ import (
     "github.com/erikhoward/iris/tools"
     "github.com/erikhoward/iris/agents/graph"
 )
+```
+
+### Running Examples
+
+Examples are in a separate module but can be run from the project root thanks to the Go workspace:
+
+```bash
+# Run from project root
+go run ./examples/chat/basic
+go run ./examples/chat/streaming
+go run ./examples/tools/weather
+
+# Or from the examples directory
+cd examples
+go run ./chat/basic
+```
+
+See [examples/README.md](examples/README.md) for detailed documentation on each example.
+
+### Provider Registry
+
+Providers self-register via `init()` functions, making it easy to add new providers:
+
+```go
+// In providers/myprovider/register.go
+func init() {
+    providers.Register("myprovider", func(apiKey string) core.Provider {
+        return New(apiKey)
+    })
+}
+```
+
+List registered providers:
+```go
+import "github.com/erikhoward/iris/providers"
+
+fmt.Println(providers.List()) // [anthropic gemini huggingface ollama openai xai zai]
 ```
 
 ## License

@@ -15,29 +15,55 @@ import (
 	"github.com/erikhoward/iris/tools"
 )
 
-// skipIfNoAPIKey skips the test if IRIS_OPENAI_API_KEY is not set.
+// isCI returns true if running in a CI environment.
+// It checks for common CI environment variables.
+func isCI() bool {
+	// GitHub Actions, GitLab CI, CircleCI, Travis, Jenkins, etc.
+	ciVars := []string{"CI", "GITHUB_ACTIONS", "GITLAB_CI", "CIRCLECI", "TRAVIS", "JENKINS_URL"}
+	for _, v := range ciVars {
+		if os.Getenv(v) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// skipOrFailOnMissingKey handles missing API keys.
+// In CI environments, it fails loudly unless IRIS_SKIP_INTEGRATION is set.
+// In local development, it skips the test gracefully.
+func skipOrFailOnMissingKey(t *testing.T, keyName string) {
+	t.Helper()
+	if isCI() && os.Getenv("IRIS_SKIP_INTEGRATION") == "" {
+		t.Fatalf("%s not set (CI environment detected; set IRIS_SKIP_INTEGRATION=1 to skip)", keyName)
+	}
+	t.Skipf("%s not set", keyName)
+}
+
+// skipIfNoAPIKey skips the test if OPENAI_API_KEY is not set.
+// In CI, it fails unless IRIS_SKIP_INTEGRATION is set.
 func skipIfNoAPIKey(t *testing.T) {
 	t.Helper()
-	if os.Getenv("IRIS_OPENAI_API_KEY") == "" {
-		t.Skip("IRIS_OPENAI_API_KEY not set")
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		skipOrFailOnMissingKey(t, "OPENAI_API_KEY")
 	}
 }
 
 // getAPIKey returns the OpenAI API key from environment.
 func getAPIKey(t *testing.T) string {
 	t.Helper()
-	key := os.Getenv("IRIS_OPENAI_API_KEY")
+	key := os.Getenv("OPENAI_API_KEY")
 	if key == "" {
-		t.Fatal("IRIS_OPENAI_API_KEY not set")
+		t.Fatal("OPENAI_API_KEY not set")
 	}
 	return key
 }
 
 // skipIfNoAnthropicKey skips the test if ANTHROPIC_API_KEY is not set.
+// In CI, it fails unless IRIS_SKIP_INTEGRATION is set.
 func skipIfNoAnthropicKey(t *testing.T) {
 	t.Helper()
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
-		t.Skip("ANTHROPIC_API_KEY not set")
+		skipOrFailOnMissingKey(t, "ANTHROPIC_API_KEY")
 	}
 }
 
@@ -52,10 +78,11 @@ func getAnthropicKey(t *testing.T) string {
 }
 
 // skipIfNoGeminiKey skips the test if GEMINI_API_KEY is not set.
+// In CI, it fails unless IRIS_SKIP_INTEGRATION is set.
 func skipIfNoGeminiKey(t *testing.T) {
 	t.Helper()
 	if os.Getenv("GEMINI_API_KEY") == "" {
-		t.Skip("GEMINI_API_KEY not set")
+		skipOrFailOnMissingKey(t, "GEMINI_API_KEY")
 	}
 }
 
@@ -70,10 +97,11 @@ func getGeminiKey(t *testing.T) string {
 }
 
 // skipIfNoZaiKey skips the test if ZAI_API_KEY is not set.
+// In CI, it fails unless IRIS_SKIP_INTEGRATION is set.
 func skipIfNoZaiKey(t *testing.T) {
 	t.Helper()
 	if os.Getenv("ZAI_API_KEY") == "" {
-		t.Skip("ZAI_API_KEY not set")
+		skipOrFailOnMissingKey(t, "ZAI_API_KEY")
 	}
 }
 
@@ -88,10 +116,11 @@ func getZaiKey(t *testing.T) string {
 }
 
 // skipIfNoXaiKey skips the test if XAI_API_KEY is not set.
+// In CI, it fails unless IRIS_SKIP_INTEGRATION is set.
 func skipIfNoXaiKey(t *testing.T) {
 	t.Helper()
 	if os.Getenv("XAI_API_KEY") == "" {
-		t.Skip("XAI_API_KEY not set")
+		skipOrFailOnMissingKey(t, "XAI_API_KEY")
 	}
 }
 
@@ -113,25 +142,14 @@ type cliResult struct {
 }
 
 // runCLI executes the iris CLI with the given arguments.
-// It builds the CLI binary first if needed.
+// It uses the pre-built binary from TestMain for efficiency.
 func runCLI(t *testing.T, args ...string) cliResult {
 	t.Helper()
 
-	// Find the CLI directory
-	cliDir := findCLIDir(t)
-
-	// Build the CLI
-	buildCmd := exec.Command("go", "build", "-o", "iris-test", "./cmd/iris")
-	buildCmd.Dir = cliDir
-	if output, err := buildCmd.CombinedOutput(); err != nil {
-		t.Fatalf("Failed to build CLI: %v\n%s", err, output)
+	binaryPath := getCliBinary()
+	if binaryPath == "" {
+		t.Fatal("CLI binary not built - TestMain may not have run")
 	}
-
-	// Clean up binary after test
-	binaryPath := filepath.Join(cliDir, "iris-test")
-	t.Cleanup(func() {
-		os.Remove(binaryPath)
-	})
 
 	// Run the CLI
 	cmd := exec.Command(binaryPath, args...)
@@ -158,22 +176,14 @@ func runCLI(t *testing.T, args ...string) cliResult {
 }
 
 // runCLIWithStdin executes the iris CLI with stdin input.
+// It uses the pre-built binary from TestMain for efficiency.
 func runCLIWithStdin(t *testing.T, stdin string, args ...string) cliResult {
 	t.Helper()
 
-	cliDir := findCLIDir(t)
-
-	// Build the CLI
-	buildCmd := exec.Command("go", "build", "-o", "iris-test", "./cmd/iris")
-	buildCmd.Dir = cliDir
-	if output, err := buildCmd.CombinedOutput(); err != nil {
-		t.Fatalf("Failed to build CLI: %v\n%s", err, output)
+	binaryPath := getCliBinary()
+	if binaryPath == "" {
+		t.Fatal("CLI binary not built - TestMain may not have run")
 	}
-
-	binaryPath := filepath.Join(cliDir, "iris-test")
-	t.Cleanup(func() {
-		os.Remove(binaryPath)
-	})
 
 	cmd := exec.Command(binaryPath, args...)
 	cmd.Stdin = bytes.NewBufferString(stdin)
@@ -197,28 +207,6 @@ func runCLIWithStdin(t *testing.T, stdin string, args ...string) cliResult {
 		Stderr:   stderr.String(),
 		ExitCode: exitCode,
 	}
-}
-
-// findCLIDir locates the CLI directory relative to the test.
-func findCLIDir(t *testing.T) string {
-	t.Helper()
-
-	// Try relative paths from tests/integration
-	candidates := []string{
-		"../../cli",
-		"../cli",
-		"cli",
-	}
-
-	for _, candidate := range candidates {
-		if _, err := os.Stat(filepath.Join(candidate, "cmd", "iris", "main.go")); err == nil {
-			abs, _ := filepath.Abs(candidate)
-			return abs
-		}
-	}
-
-	t.Fatal("Could not find CLI directory")
-	return ""
 }
 
 // findTestDataDir locates the testdata directory.
