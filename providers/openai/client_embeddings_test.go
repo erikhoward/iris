@@ -3,6 +3,7 @@ package openai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -250,5 +251,82 @@ func TestCreateEmbeddings_WithDimensions(t *testing.T) {
 
 	if len(resp.Vectors[0].Vector) != 256 {
 		t.Errorf("len(Vector) = %d, want 256", len(resp.Vectors[0].Vector))
+	}
+}
+
+func TestCreateEmbeddings_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(openAIErrorResponse{
+			Error: struct {
+				Message string `json:"message"`
+				Type    string `json:"type"`
+				Code    string `json:"code"`
+			}{
+				Message: "Invalid API key",
+				Type:    "invalid_request_error",
+				Code:    "invalid_api_key",
+			},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("bad-key", WithBaseURL(server.URL+"/v1"))
+
+	_, err := provider.CreateEmbeddings(context.Background(), &core.EmbeddingRequest{
+		Model: "text-embedding-3-small",
+		Input: []core.EmbeddingInput{{Text: "hello"}},
+	})
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+
+	var provErr *core.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("Expected ProviderError, got %T", err)
+	}
+
+	if provErr.Status != http.StatusUnauthorized {
+		t.Errorf("Status = %d, want %d", provErr.Status, http.StatusUnauthorized)
+	}
+	if !errors.Is(provErr, core.ErrUnauthorized) {
+		t.Errorf("Expected ErrUnauthorized, got %v", provErr.Err)
+	}
+}
+
+func TestCreateEmbeddings_WithOrgAndProject(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify organization and project headers
+		if r.Header.Get("OpenAI-Organization") != "org-123" {
+			t.Errorf("OpenAI-Organization = %q, want org-123", r.Header.Get("OpenAI-Organization"))
+		}
+		if r.Header.Get("OpenAI-Project") != "proj-456" {
+			t.Errorf("OpenAI-Project = %q, want proj-456", r.Header.Get("OpenAI-Project"))
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(openAIEmbeddingResponse{
+			Object: "list",
+			Data: []openAIEmbeddingData{
+				{Object: "embedding", Index: 0, Embedding: []float64{0.1}},
+			},
+			Model: "text-embedding-3-small",
+			Usage: openAIEmbeddingUsage{PromptTokens: 2, TotalTokens: 2},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key",
+		WithBaseURL(server.URL+"/v1"),
+		WithOrgID("org-123"),
+		WithProjectID("proj-456"),
+	)
+
+	_, err := provider.CreateEmbeddings(context.Background(), &core.EmbeddingRequest{
+		Model: "text-embedding-3-small",
+		Input: []core.EmbeddingInput{{Text: "hello"}},
+	})
+	if err != nil {
+		t.Fatalf("CreateEmbeddings() error = %v", err)
 	}
 }
