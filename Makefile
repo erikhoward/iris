@@ -2,6 +2,14 @@
 
 .PHONY: all build test lint fmt vet clean install-hooks help
 
+# Version information
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+LDFLAGS := -ldflags "-X github.com/erikhoward/iris/cli/commands.Version=$(VERSION) \
+	-X github.com/erikhoward/iris/cli/commands.Commit=$(COMMIT) \
+	-X github.com/erikhoward/iris/cli/commands.BuildDate=$(BUILD_DATE)"
+
 # Default target
 all: lint test build
 
@@ -53,13 +61,13 @@ clean:
 install-hooks:
 	./scripts/setup-hooks.sh
 
-# Build the CLI
+# Build the CLI with version information
 build-cli:
-	go build -o bin/iris ./cli/cmd/iris
+	go build $(LDFLAGS) -o bin/iris ./cli/cmd/iris
 
-# Install the CLI locally
+# Install the CLI locally with version information
 install-cli:
-	go install ./cli/cmd/iris
+	go install $(LDFLAGS) ./cli/cmd/iris
 
 # Run integration tests (requires API keys)
 test-integration:
@@ -83,6 +91,7 @@ help:
 	@echo "  vet            Run go vet"
 	@echo "  clean          Clean build artifacts"
 	@echo "  install-hooks  Install git pre-commit hooks"
-	@echo "  build-cli      Build the CLI to bin/iris"
-	@echo "  install-cli    Install the CLI locally"
+	@echo "  build-cli      Build the CLI to bin/iris (with version info)"
+	@echo "  install-cli    Install the CLI locally (with version info)"
+	@echo "  test-integration  Run integration tests (requires API keys)"
 	@echo "  help           Show this help"
