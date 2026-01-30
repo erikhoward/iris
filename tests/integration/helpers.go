@@ -143,6 +143,25 @@ func getXaiKey(t *testing.T) string {
 	return key
 }
 
+// skipIfNoVoyageAPIKey skips the test if VOYAGEAI_API_KEY is not set.
+// In CI, it fails unless IRIS_SKIP_INTEGRATION is set.
+func skipIfNoVoyageAPIKey(t *testing.T) {
+	t.Helper()
+	if os.Getenv("VOYAGEAI_API_KEY") == "" {
+		skipOrFailOnMissingKey(t, "VOYAGEAI_API_KEY")
+	}
+}
+
+// getVoyageAPIKey returns the Voyage AI API key from environment.
+func getVoyageAPIKey(t *testing.T) string {
+	t.Helper()
+	key := os.Getenv("VOYAGEAI_API_KEY")
+	if key == "" {
+		t.Fatal("VOYAGEAI_API_KEY not set")
+	}
+	return key
+}
+
 // cliResult holds the result of running a CLI command.
 type cliResult struct {
 	Stdout   string
