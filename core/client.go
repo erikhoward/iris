@@ -205,6 +205,14 @@ func (b *ChatBuilder) validate() error {
 	if len(b.req.Messages) == 0 {
 		return ErrNoMessages
 	}
+
+	// Validate each message has content (either Content string or Parts)
+	for _, msg := range b.req.Messages {
+		if msg.Content == "" && len(msg.Parts) == 0 {
+			return ErrNoMessages
+		}
+	}
+
 	return nil
 }
 
@@ -302,6 +310,118 @@ func (b *ChatBuilder) Stream(ctx context.Context) (*ChatStream, error) {
 
 	// Wrap the stream to emit telemetry when it completes
 	return wrapStreamWithTelemetry(stream, b.client.telemetry, providerID, b.req.Model, start), nil
+}
+
+// MessageBuilder provides a fluent API for building multimodal messages.
+type MessageBuilder struct {
+	parent *ChatBuilder
+	role   Role
+	parts  []ContentPart
+}
+
+// UserMultimodal starts building a multimodal user message.
+func (b *ChatBuilder) UserMultimodal() *MessageBuilder {
+	return &MessageBuilder{
+		parent: b,
+		role:   RoleUser,
+		parts:  make([]ContentPart, 0),
+	}
+}
+
+// Text adds a text content part to the message.
+func (m *MessageBuilder) Text(s string) *MessageBuilder {
+	m.parts = append(m.parts, &InputText{Text: s})
+	return m
+}
+
+// ImageURL adds an image by URL (HTTPS or data URL).
+func (m *MessageBuilder) ImageURL(url string) *MessageBuilder {
+	m.parts = append(m.parts, &InputImage{ImageURL: url})
+	return m
+}
+
+// ImageURLWithDetail adds an image by URL with a specific detail level.
+func (m *MessageBuilder) ImageURLWithDetail(url string, detail ImageDetail) *MessageBuilder {
+	m.parts = append(m.parts, &InputImage{ImageURL: url, Detail: detail})
+	return m
+}
+
+// ImageFileID adds an image by file ID from the Files API.
+func (m *MessageBuilder) ImageFileID(fileID string) *MessageBuilder {
+	m.parts = append(m.parts, &InputImage{FileID: fileID})
+	return m
+}
+
+// ImageFileIDWithDetail adds an image by file ID with a specific detail level.
+func (m *MessageBuilder) ImageFileIDWithDetail(fileID string, detail ImageDetail) *MessageBuilder {
+	m.parts = append(m.parts, &InputImage{FileID: fileID, Detail: detail})
+	return m
+}
+
+// FileURL adds a file by URL.
+func (m *MessageBuilder) FileURL(url string) *MessageBuilder {
+	m.parts = append(m.parts, &InputFile{FileURL: url})
+	return m
+}
+
+// FileID adds a file by file ID from the Files API.
+func (m *MessageBuilder) FileID(fileID string) *MessageBuilder {
+	m.parts = append(m.parts, &InputFile{FileID: fileID})
+	return m
+}
+
+// FileBase64 adds a file with base64-encoded content.
+func (m *MessageBuilder) FileBase64(filename, base64Data string) *MessageBuilder {
+	m.parts = append(m.parts, &InputFile{
+		Filename: filename,
+		FileData: base64Data,
+	})
+	return m
+}
+
+// Done completes the message and returns to the ChatBuilder.
+func (m *MessageBuilder) Done() *ChatBuilder {
+	m.parent.req.Messages = append(m.parent.req.Messages, Message{
+		Role:  m.role,
+		Parts: m.parts,
+	})
+	return m.parent
+}
+
+// UserWithImageURL adds a user message with text and an image URL.
+// This is a convenience method for common vision use cases.
+func (b *ChatBuilder) UserWithImageURL(text, imageURL string) *ChatBuilder {
+	return b.UserMultimodal().
+		Text(text).
+		ImageURL(imageURL).
+		Done()
+}
+
+// UserWithImageFileID adds a user message with text and an image file ID.
+// This is a convenience method for vision use cases with uploaded files.
+func (b *ChatBuilder) UserWithImageFileID(text, fileID string) *ChatBuilder {
+	return b.UserMultimodal().
+		Text(text).
+		ImageFileID(fileID).
+		Done()
+}
+
+// UserWithFileURL adds a user message with text and a file URL.
+// This is a convenience method for document analysis use cases.
+func (b *ChatBuilder) UserWithFileURL(text, fileURL string) *ChatBuilder {
+	return b.UserMultimodal().
+		Text(text).
+		FileURL(fileURL).
+		Done()
+}
+
+// UserWithFileID adds a user message with text and a file ID.
+// This is a convenience method for document analysis with uploaded files.
+func (b *ChatBuilder) UserWithFileID(text, fileID string) *ChatBuilder {
+	return b.UserMultimodal().
+		Text(text).
+		FileID(fileID).
+		Done()
 }
 
 // wrapStreamWithTelemetry wraps a ChatStream to emit telemetry on completion.

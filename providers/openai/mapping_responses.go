@@ -77,9 +77,10 @@ func buildResponsesInput(msgs []core.Message, instructions string) responsesInpu
 		return responsesInput{}
 	}
 
-	// If there's only one user message with no system messages and no instructions,
-	// we can use the simple text format.
-	if len(msgs) == 1 && msgs[0].Role == core.RoleUser && instructions == "" {
+	// If there's only one user message with no system messages, no instructions,
+	// and no multimodal parts, we can use the simple text format.
+	if len(msgs) == 1 && msgs[0].Role == core.RoleUser &&
+		instructions == "" && len(msgs[0].Parts) == 0 {
 		return responsesInput{Text: msgs[0].Content}
 	}
 
@@ -98,13 +99,56 @@ func buildResponsesInput(msgs []core.Message, instructions string) responsesInpu
 			role = "developer"
 		}
 
-		messages = append(messages, responsesInputMessage{
-			Role:    role,
-			Content: msg.Content,
-		})
+		// Handle multimodal content
+		if len(msg.Parts) > 0 {
+			parts := make([]responsesContentPart, 0, len(msg.Parts))
+			for _, part := range msg.Parts {
+				parts = append(parts, mapContentPart(part))
+			}
+			messages = append(messages, responsesInputMessage{
+				Role:    role,
+				Content: responsesContent{Parts: parts},
+			})
+		} else {
+			messages = append(messages, responsesInputMessage{
+				Role:    role,
+				Content: responsesContent{Text: msg.Content},
+			})
+		}
 	}
 
 	return responsesInput{Messages: messages}
+}
+
+// mapContentPart converts a core.ContentPart to a responsesContentPart.
+func mapContentPart(part core.ContentPart) responsesContentPart {
+	switch p := part.(type) {
+	case *core.InputText:
+		return responsesContentPart{
+			Type: "input_text",
+			Text: p.Text,
+		}
+	case *core.InputImage:
+		cp := responsesContentPart{
+			Type:     "input_image",
+			ImageURL: p.ImageURL,
+			FileID:   p.FileID,
+		}
+		if p.Detail != "" {
+			cp.Detail = string(p.Detail)
+		}
+		return cp
+	case *core.InputFile:
+		return responsesContentPart{
+			Type:     "input_file",
+			FileID:   p.FileID,
+			FileURL:  p.FileURL,
+			FileData: p.FileData,
+			Filename: p.Filename,
+		}
+	default:
+		return responsesContentPart{}
+	}
 }
 
 // mapResponsesTools converts Iris tools and built-in tools to Responses API format.

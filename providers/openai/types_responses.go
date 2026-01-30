@@ -57,10 +57,69 @@ func (r responsesInput) MarshalJSON() ([]byte, error) {
 	return json.Marshal(r.Messages)
 }
 
+// responsesContent can be either a string or an array of content parts.
+// Custom marshaling handles both cases.
+type responsesContent struct {
+	Text  string                 // Simple text content
+	Parts []responsesContentPart // Multimodal content parts
+}
+
+// MarshalJSON implements custom marshaling for responsesContent.
+// If Parts is set, marshals as array. Otherwise marshals Text as string.
+func (c responsesContent) MarshalJSON() ([]byte, error) {
+	if len(c.Parts) > 0 {
+		return json.Marshal(c.Parts)
+	}
+	return json.Marshal(c.Text)
+}
+
+// UnmarshalJSON implements custom unmarshaling for responsesContent.
+// Handles both string and array formats.
+func (c *responsesContent) UnmarshalJSON(data []byte) error {
+	// Try string first
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		c.Text = text
+		c.Parts = nil
+		return nil
+	}
+
+	// Try array of parts
+	var parts []responsesContentPart
+	if err := json.Unmarshal(data, &parts); err != nil {
+		return err
+	}
+	c.Parts = parts
+	c.Text = ""
+	return nil
+}
+
 // responsesInputMessage represents a message in the Responses API input.
+// Content can be simple text or multimodal content parts.
 type responsesInputMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role    string           `json:"role"`
+	Content responsesContent `json:"content"`
+}
+
+// responsesContentPart represents a content part in a Responses API input message.
+// Type determines which fields are used.
+type responsesContentPart struct {
+	Type string `json:"type"`
+
+	// For input_text
+	Text string `json:"text,omitempty"`
+
+	// For input_image
+	ImageURL string `json:"image_url,omitempty"` // URL or data URL
+	Detail   string `json:"detail,omitempty"`    // auto, low, high
+
+	// For input_image and input_file
+	FileID string `json:"file_id,omitempty"`
+
+	// For input_file
+	FileURL  string `json:"file_url,omitempty"`
+	FileData string `json:"file_data,omitempty"`
+	Filename string `json:"filename,omitempty"`
 }
 
 // responsesTool represents a tool in the Responses API.

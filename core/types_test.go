@@ -29,7 +29,7 @@ func TestMessageJSONMarshal(t *testing.T) {
 		{
 			name: "empty content",
 			msg:  Message{Role: RoleUser, Content: ""},
-			want: `{"role":"user","content":""}`,
+			want: `{"role":"user"}`, // Content omitted when empty (omitempty)
 		},
 	}
 
@@ -77,7 +77,7 @@ func TestMessageJSONUnmarshal(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Unmarshal() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if got != tt.want {
+			if got.Role != tt.want.Role || got.Content != tt.want.Content {
 				t.Errorf("Unmarshal() = %+v, want %+v", got, tt.want)
 			}
 		})
@@ -310,7 +310,7 @@ func TestMessageOrderingPreserved(t *testing.T) {
 	}
 
 	for i, msg := range result {
-		if msg != messages[i] {
+		if msg.Role != messages[i].Role || msg.Content != messages[i].Content {
 			t.Errorf("messages[%d] = %+v, want %+v", i, msg, messages[i])
 		}
 	}

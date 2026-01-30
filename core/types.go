@@ -87,10 +87,12 @@ const (
 )
 
 // Message represents a single message in a conversation.
-// Content is plain text for v0.1.
+// For simple text messages, use Content. For multimodal messages, use Parts.
+// If Parts is non-empty, Content is ignored.
 type Message struct {
-	Role    Role   `json:"role"`
-	Content string `json:"content"`
+	Role    Role          `json:"role"`
+	Content string        `json:"content,omitempty"`
+	Parts   []ContentPart `json:"-"` // Multimodal content parts (Responses API only)
 }
 
 // TokenUsage tracks token consumption for a request.

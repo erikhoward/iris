@@ -556,3 +556,361 @@ func TestFileSearchWithoutVectorStoreIDs(t *testing.T) {
 		t.Error("expected no ToolResources when no vector store IDs provided")
 	}
 }
+
+func TestMessageBuilder(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserMultimodal().
+		Text("What's in this image?").
+		ImageURL("https://example.com/cat.jpg").
+		Done()
+
+	if len(builder.req.Messages) != 1 {
+		t.Fatalf("Messages length = %d, want 1", len(builder.req.Messages))
+	}
+
+	msg := builder.req.Messages[0]
+	if msg.Role != RoleUser {
+		t.Errorf("Role = %q, want user", msg.Role)
+	}
+	if len(msg.Parts) != 2 {
+		t.Fatalf("Parts length = %d, want 2", len(msg.Parts))
+	}
+
+	// Verify first part is text
+	text, ok := msg.Parts[0].(*InputText)
+	if !ok {
+		t.Fatalf("Parts[0] is not *InputText, got %T", msg.Parts[0])
+	}
+	if text.Text != "What's in this image?" {
+		t.Errorf("Text = %q, want %q", text.Text, "What's in this image?")
+	}
+
+	// Verify second part is image
+	img, ok := msg.Parts[1].(*InputImage)
+	if !ok {
+		t.Fatalf("Parts[1] is not *InputImage, got %T", msg.Parts[1])
+	}
+	if img.ImageURL != "https://example.com/cat.jpg" {
+		t.Errorf("ImageURL = %q, want %q", img.ImageURL, "https://example.com/cat.jpg")
+	}
+}
+
+func TestMessageBuilderImageWithDetail(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserMultimodal().
+		Text("Analyze this").
+		ImageURLWithDetail("https://example.com/doc.jpg", ImageDetailHigh).
+		Done()
+
+	if len(builder.req.Messages) != 1 {
+		t.Fatalf("Messages length = %d, want 1", len(builder.req.Messages))
+	}
+
+	img, ok := builder.req.Messages[0].Parts[1].(*InputImage)
+	if !ok {
+		t.Fatalf("Parts[1] is not *InputImage, got %T", builder.req.Messages[0].Parts[1])
+	}
+	if img.Detail != ImageDetailHigh {
+		t.Errorf("Detail = %q, want high", img.Detail)
+	}
+}
+
+func TestMessageBuilderFile(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserMultimodal().
+		Text("Summarize").
+		FileID("file-abc123").
+		Done()
+
+	if len(builder.req.Messages) != 1 {
+		t.Fatalf("Messages length = %d, want 1", len(builder.req.Messages))
+	}
+
+	file, ok := builder.req.Messages[0].Parts[1].(*InputFile)
+	if !ok {
+		t.Fatalf("Parts[1] is not *InputFile, got %T", builder.req.Messages[0].Parts[1])
+	}
+	if file.FileID != "file-abc123" {
+		t.Errorf("FileID = %q, want file-abc123", file.FileID)
+	}
+}
+
+func TestMessageBuilderImageFileID(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserMultimodal().
+		ImageFileID("file-img123").
+		Done()
+
+	if len(builder.req.Messages) != 1 {
+		t.Fatalf("Messages length = %d, want 1", len(builder.req.Messages))
+	}
+
+	img, ok := builder.req.Messages[0].Parts[0].(*InputImage)
+	if !ok {
+		t.Fatalf("Parts[0] is not *InputImage, got %T", builder.req.Messages[0].Parts[0])
+	}
+	if img.FileID != "file-img123" {
+		t.Errorf("FileID = %q, want file-img123", img.FileID)
+	}
+}
+
+func TestMessageBuilderImageFileIDWithDetail(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserMultimodal().
+		ImageFileIDWithDetail("file-img456", ImageDetailLow).
+		Done()
+
+	img, ok := builder.req.Messages[0].Parts[0].(*InputImage)
+	if !ok {
+		t.Fatalf("Parts[0] is not *InputImage, got %T", builder.req.Messages[0].Parts[0])
+	}
+	if img.FileID != "file-img456" {
+		t.Errorf("FileID = %q, want file-img456", img.FileID)
+	}
+	if img.Detail != ImageDetailLow {
+		t.Errorf("Detail = %q, want low", img.Detail)
+	}
+}
+
+func TestMessageBuilderFileURL(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserMultimodal().
+		FileURL("https://example.com/document.pdf").
+		Done()
+
+	file, ok := builder.req.Messages[0].Parts[0].(*InputFile)
+	if !ok {
+		t.Fatalf("Parts[0] is not *InputFile, got %T", builder.req.Messages[0].Parts[0])
+	}
+	if file.FileURL != "https://example.com/document.pdf" {
+		t.Errorf("FileURL = %q, want https://example.com/document.pdf", file.FileURL)
+	}
+}
+
+func TestMessageBuilderFileBase64(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserMultimodal().
+		FileBase64("report.pdf", "JVBERi0xLjQK").
+		Done()
+
+	file, ok := builder.req.Messages[0].Parts[0].(*InputFile)
+	if !ok {
+		t.Fatalf("Parts[0] is not *InputFile, got %T", builder.req.Messages[0].Parts[0])
+	}
+	if file.Filename != "report.pdf" {
+		t.Errorf("Filename = %q, want report.pdf", file.Filename)
+	}
+	if file.FileData != "JVBERi0xLjQK" {
+		t.Errorf("FileData = %q, want JVBERi0xLjQK", file.FileData)
+	}
+}
+
+func TestMessageBuilderChaining(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	// Test that MessageBuilder chains correctly back to ChatBuilder
+	builder := client.Chat("test-model").
+		System("You are helpful").
+		UserMultimodal().
+		Text("Look at these").
+		ImageURL("https://example.com/img1.jpg").
+		ImageURLWithDetail("https://example.com/img2.jpg", ImageDetailHigh).
+		Done().
+		Temperature(0.7)
+
+	if len(builder.req.Messages) != 2 {
+		t.Fatalf("Messages length = %d, want 2", len(builder.req.Messages))
+	}
+	if builder.req.Messages[0].Role != RoleSystem {
+		t.Errorf("Messages[0].Role = %q, want system", builder.req.Messages[0].Role)
+	}
+	if builder.req.Messages[1].Role != RoleUser {
+		t.Errorf("Messages[1].Role = %q, want user", builder.req.Messages[1].Role)
+	}
+	if len(builder.req.Messages[1].Parts) != 3 {
+		t.Fatalf("Messages[1].Parts length = %d, want 3", len(builder.req.Messages[1].Parts))
+	}
+	if builder.req.Temperature == nil || *builder.req.Temperature != 0.7 {
+		t.Errorf("Temperature not set correctly")
+	}
+}
+
+func TestUserWithImageURL(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserWithImageURL("Describe this", "https://example.com/img.jpg")
+
+	req := builder.req
+	if len(req.Messages) != 1 {
+		t.Fatalf("Messages length = %d, want 1", len(req.Messages))
+	}
+
+	msg := req.Messages[0]
+	if len(msg.Parts) != 2 {
+		t.Fatalf("Parts length = %d, want 2", len(msg.Parts))
+	}
+
+	text := msg.Parts[0].(*InputText)
+	if text.Text != "Describe this" {
+		t.Errorf("Text = %q, want %q", text.Text, "Describe this")
+	}
+
+	img := msg.Parts[1].(*InputImage)
+	if img.ImageURL != "https://example.com/img.jpg" {
+		t.Errorf("ImageURL = %q, want expected URL", img.ImageURL)
+	}
+}
+
+func TestUserWithFileURL(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserWithFileURL("Summarize this", "https://example.com/doc.pdf")
+
+	req := builder.req
+	msg := req.Messages[0]
+
+	if msg.Role != RoleUser {
+		t.Errorf("Role = %q, want user", msg.Role)
+	}
+
+	text := msg.Parts[0].(*InputText)
+	if text.Text != "Summarize this" {
+		t.Errorf("Text = %q, want %q", text.Text, "Summarize this")
+	}
+
+	file := msg.Parts[1].(*InputFile)
+	if file.FileURL != "https://example.com/doc.pdf" {
+		t.Errorf("FileURL = %q, want expected URL", file.FileURL)
+	}
+}
+
+func TestUserWithImageFileID(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserWithImageFileID("Describe this", "file-img123")
+
+	req := builder.req
+	msg := req.Messages[0]
+
+	if msg.Role != RoleUser {
+		t.Errorf("Role = %q, want user", msg.Role)
+	}
+
+	text := msg.Parts[0].(*InputText)
+	if text.Text != "Describe this" {
+		t.Errorf("Text = %q, want %q", text.Text, "Describe this")
+	}
+
+	img := msg.Parts[1].(*InputImage)
+	if img.FileID != "file-img123" {
+		t.Errorf("FileID = %q, want file-img123", img.FileID)
+	}
+}
+
+func TestUserWithFileID(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserWithFileID("Summarize this", "file-doc456")
+
+	req := builder.req
+	msg := req.Messages[0]
+
+	if msg.Role != RoleUser {
+		t.Errorf("Role = %q, want user", msg.Role)
+	}
+
+	text := msg.Parts[0].(*InputText)
+	if text.Text != "Summarize this" {
+		t.Errorf("Text = %q, want %q", text.Text, "Summarize this")
+	}
+
+	file := msg.Parts[1].(*InputFile)
+	if file.FileID != "file-doc456" {
+		t.Errorf("FileID = %q, want file-doc456", file.FileID)
+	}
+}
+
+func TestBackwardCompatibilitySimpleUser(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	// Old-style .User() should still work
+	builder := client.Chat("test-model").
+		User("Hello, world!")
+
+	req := builder.req
+	if len(req.Messages) != 1 {
+		t.Fatalf("Messages length = %d, want 1", len(req.Messages))
+	}
+
+	msg := req.Messages[0]
+	if msg.Content != "Hello, world!" {
+		t.Errorf("Content = %q, want %q", msg.Content, "Hello, world!")
+	}
+	if len(msg.Parts) != 0 {
+		t.Errorf("Parts should be empty for simple messages, got %d", len(msg.Parts))
+	}
+}
+
+func TestValidateMultimodalMessage(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	// Message with Parts should be valid
+	builder := client.Chat("test-model").
+		UserMultimodal().
+		Text("Hello").
+		Done()
+
+	err := builder.validate()
+	if err != nil {
+		t.Errorf("validate() = %v, want nil", err)
+	}
+}
+
+func TestValidateEmptyMessage(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	// Direct manipulation to test edge case - message with neither Content nor Parts
+	builder := client.Chat("test-model")
+	builder.req.Messages = append(builder.req.Messages, Message{
+		Role: RoleUser,
+		// Both Content and Parts are empty
+	})
+
+	err := builder.validate()
+	if err == nil {
+		t.Error("validate() should fail for empty message")
+	}
+}

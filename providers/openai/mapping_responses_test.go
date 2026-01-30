@@ -412,8 +412,8 @@ func TestResponsesToolInputMarshalText(t *testing.T) {
 func TestResponsesToolInputMarshalMessages(t *testing.T) {
 	input := responsesInput{
 		Messages: []responsesInputMessage{
-			{Role: "user", Content: "Hi"},
-			{Role: "assistant", Content: "Hello"},
+			{Role: "user", Content: responsesContent{Text: "Hi"}},
+			{Role: "assistant", Content: responsesContent{Text: "Hello"}},
 		},
 	}
 
@@ -478,5 +478,95 @@ func TestBuildResponsesRequestWithoutToolResources(t *testing.T) {
 
 	if result.ToolResources != nil {
 		t.Error("expected ToolResources to be nil")
+	}
+}
+
+func TestBuildResponsesInputBackwardCompatibility(t *testing.T) {
+	// Simple text-only message should use the text format (not array)
+	msgs := []core.Message{
+		{Role: core.RoleUser, Content: "Hello"},
+	}
+
+	input := buildResponsesInput(msgs, "")
+	got, err := json.Marshal(input)
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+
+	// Should be simple string, not array
+	want := `"Hello"`
+	if string(got) != want {
+		t.Errorf("buildResponsesInput = %s, want %s", got, want)
+	}
+}
+
+func TestBuildResponsesInputMultimodal(t *testing.T) {
+	tests := []struct {
+		name         string
+		messages     []core.Message
+		instructions string
+		wantJSON     string
+	}{
+		{
+			name: "simple text unchanged",
+			messages: []core.Message{
+				{Role: core.RoleUser, Content: "Hello"},
+			},
+			wantJSON: `"Hello"`,
+		},
+		{
+			name: "multimodal with image URL",
+			messages: []core.Message{
+				{
+					Role: core.RoleUser,
+					Parts: []core.ContentPart{
+						&core.InputText{Text: "What's in this image?"},
+						&core.InputImage{ImageURL: "https://example.com/cat.jpg"},
+					},
+				},
+			},
+			wantJSON: `[{"role":"user","content":[{"type":"input_text","text":"What's in this image?"},{"type":"input_image","image_url":"https://example.com/cat.jpg"}]}]`,
+		},
+		{
+			name: "multimodal with file_id",
+			messages: []core.Message{
+				{
+					Role: core.RoleUser,
+					Parts: []core.ContentPart{
+						&core.InputText{Text: "Analyze this document"},
+						&core.InputFile{FileID: "file-abc123"},
+					},
+				},
+			},
+			wantJSON: `[{"role":"user","content":[{"type":"input_text","text":"Analyze this document"},{"type":"input_file","file_id":"file-abc123"}]}]`,
+		},
+		{
+			name: "image with detail",
+			messages: []core.Message{
+				{
+					Role: core.RoleUser,
+					Parts: []core.ContentPart{
+						&core.InputImage{
+							ImageURL: "https://example.com/cat.jpg",
+							Detail:   core.ImageDetailHigh,
+						},
+					},
+				},
+			},
+			wantJSON: `[{"role":"user","content":[{"type":"input_image","image_url":"https://example.com/cat.jpg","detail":"high"}]}]`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := buildResponsesInput(tt.messages, tt.instructions)
+			got, err := json.Marshal(input)
+			if err != nil {
+				t.Fatalf("Marshal error: %v", err)
+			}
+			if string(got) != tt.wantJSON {
+				t.Errorf("got %s, want %s", got, tt.wantJSON)
+			}
+		})
 	}
 }
