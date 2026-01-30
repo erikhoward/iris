@@ -28,6 +28,15 @@ func isCI() bool {
 	return false
 }
 
+// skipInCI skips the test when running in CI environments.
+// Use this for tests that are flaky or unsupported in CI (e.g., HuggingFace).
+func skipInCI(t *testing.T, reason string) {
+	t.Helper()
+	if isCI() {
+		t.Skipf("skipping in CI: %s", reason)
+	}
+}
+
 // skipOrFailOnMissingKey handles missing API keys.
 // In CI environments, it fails loudly unless IRIS_SKIP_INTEGRATION is set.
 // In local development, it skips the test gracefully.
