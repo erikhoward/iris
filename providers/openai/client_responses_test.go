@@ -560,3 +560,251 @@ func TestResponsesAPIImageGenerationCallOutput(t *testing.T) {
 		t.Errorf("Output = %s, want 'I generated an image for you.'", result.Output)
 	}
 }
+
+func TestResponsesAPIMultimodalImage(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request body
+		var req map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("Failed to decode request: %v", err)
+		}
+
+		// Check input is an array (multimodal)
+		input, ok := req["input"].([]any)
+		if !ok {
+			t.Fatalf("input should be array, got %T", req["input"])
+		}
+
+		msg := input[0].(map[string]any)
+		content := msg["content"].([]any)
+
+		// Verify text part
+		textPart := content[0].(map[string]any)
+		if textPart["type"] != "input_text" {
+			t.Errorf("content[0].type = %v, want input_text", textPart["type"])
+		}
+		if textPart["text"] != "What's in this image?" {
+			t.Errorf("content[0].text = %v, want 'What's in this image?'", textPart["text"])
+		}
+
+		// Verify image part
+		imagePart := content[1].(map[string]any)
+		if imagePart["type"] != "input_image" {
+			t.Errorf("content[1].type = %v, want input_image", imagePart["type"])
+		}
+		if imagePart["image_url"] != "https://example.com/cat.jpg" {
+			t.Errorf("content[1].image_url = %v, want https://example.com/cat.jpg", imagePart["image_url"])
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"id":          "resp_123",
+			"object":      "response",
+			"created_at":  1234567890,
+			"model":       "gpt-4.1-mini",
+			"status":      "completed",
+			"output_text": "The image shows a cat.",
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	ctx := context.Background()
+	req := &core.ChatRequest{
+		Model: "gpt-4.1-mini",
+		Messages: []core.Message{
+			{
+				Role: core.RoleUser,
+				Parts: []core.ContentPart{
+					&core.InputText{Text: "What's in this image?"},
+					&core.InputImage{ImageURL: "https://example.com/cat.jpg"},
+				},
+			},
+		},
+	}
+
+	resp, err := provider.Chat(ctx, req)
+	if err != nil {
+		t.Fatalf("Chat failed: %v", err)
+	}
+
+	if resp.Output != "The image shows a cat." {
+		t.Errorf("Output = %q, want %q", resp.Output, "The image shows a cat.")
+	}
+}
+
+func TestResponsesAPIMultimodalFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("Failed to decode request: %v", err)
+		}
+
+		input := req["input"].([]any)
+		msg := input[0].(map[string]any)
+		content := msg["content"].([]any)
+
+		// Verify file part
+		filePart := content[1].(map[string]any)
+		if filePart["type"] != "input_file" {
+			t.Errorf("content[1].type = %v, want input_file", filePart["type"])
+		}
+		if filePart["file_url"] != "https://example.com/doc.pdf" {
+			t.Errorf("content[1].file_url = %v, want https://example.com/doc.pdf", filePart["file_url"])
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"id":          "resp_456",
+			"object":      "response",
+			"created_at":  1234567890,
+			"model":       "gpt-5",
+			"status":      "completed",
+			"output_text": "The document discusses quarterly earnings.",
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	ctx := context.Background()
+	req := &core.ChatRequest{
+		Model: "gpt-5",
+		Messages: []core.Message{
+			{
+				Role: core.RoleUser,
+				Parts: []core.ContentPart{
+					&core.InputText{Text: "Summarize this document"},
+					&core.InputFile{FileURL: "https://example.com/doc.pdf"},
+				},
+			},
+		},
+	}
+
+	resp, err := provider.Chat(ctx, req)
+	if err != nil {
+		t.Fatalf("Chat failed: %v", err)
+	}
+
+	if resp.Output != "The document discusses quarterly earnings." {
+		t.Errorf("Output = %q, want expected text", resp.Output)
+	}
+}
+
+func TestResponsesAPIMultimodalImageWithDetail(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("Failed to decode request: %v", err)
+		}
+
+		input := req["input"].([]any)
+		msg := input[0].(map[string]any)
+		content := msg["content"].([]any)
+
+		// Verify image part with detail
+		imagePart := content[0].(map[string]any)
+		if imagePart["type"] != "input_image" {
+			t.Errorf("content[0].type = %v, want input_image", imagePart["type"])
+		}
+		if imagePart["detail"] != "high" {
+			t.Errorf("content[0].detail = %v, want high", imagePart["detail"])
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"id":          "resp_789",
+			"object":      "response",
+			"created_at":  1234567890,
+			"model":       "gpt-4.1",
+			"status":      "completed",
+			"output_text": "High detail image analysis.",
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	ctx := context.Background()
+	req := &core.ChatRequest{
+		Model: "gpt-4.1",
+		Messages: []core.Message{
+			{
+				Role: core.RoleUser,
+				Parts: []core.ContentPart{
+					&core.InputImage{
+						ImageURL: "https://example.com/diagram.png",
+						Detail:   core.ImageDetailHigh,
+					},
+				},
+			},
+		},
+	}
+
+	resp, err := provider.Chat(ctx, req)
+	if err != nil {
+		t.Fatalf("Chat failed: %v", err)
+	}
+
+	if resp.Output != "High detail image analysis." {
+		t.Errorf("Output = %q, want expected text", resp.Output)
+	}
+}
+
+func TestResponsesAPIMultimodalFileWithID(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("Failed to decode request: %v", err)
+		}
+
+		input := req["input"].([]any)
+		msg := input[0].(map[string]any)
+		content := msg["content"].([]any)
+
+		// Verify file part with file_id
+		filePart := content[0].(map[string]any)
+		if filePart["type"] != "input_file" {
+			t.Errorf("content[0].type = %v, want input_file", filePart["type"])
+		}
+		if filePart["file_id"] != "file-abc123" {
+			t.Errorf("content[0].file_id = %v, want file-abc123", filePart["file_id"])
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"id":          "resp_file",
+			"object":      "response",
+			"created_at":  1234567890,
+			"model":       "gpt-5",
+			"status":      "completed",
+			"output_text": "File processed successfully.",
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	ctx := context.Background()
+	req := &core.ChatRequest{
+		Model: "gpt-5",
+		Messages: []core.Message{
+			{
+				Role: core.RoleUser,
+				Parts: []core.ContentPart{
+					&core.InputFile{FileID: "file-abc123"},
+				},
+			},
+		},
+	}
+
+	resp, err := provider.Chat(ctx, req)
+	if err != nil {
+		t.Fatalf("Chat failed: %v", err)
+	}
+
+	if resp.Output != "File processed successfully." {
+		t.Errorf("Output = %q, want expected text", resp.Output)
+	}
+}
