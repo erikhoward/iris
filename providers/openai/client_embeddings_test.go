@@ -123,3 +123,88 @@ func TestCreateEmbeddings_BatchInput(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateEmbeddings_WithIDAndMetadata(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(openAIEmbeddingResponse{
+			Object: "list",
+			Data: []openAIEmbeddingData{
+				{Object: "embedding", Index: 0, Embedding: []float64{0.1}},
+				{Object: "embedding", Index: 1, Embedding: []float64{0.2}},
+			},
+			Model: "text-embedding-3-small",
+			Usage: openAIEmbeddingUsage{PromptTokens: 4, TotalTokens: 4},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	resp, err := provider.CreateEmbeddings(context.Background(), &core.EmbeddingRequest{
+		Model: "text-embedding-3-small",
+		Input: []core.EmbeddingInput{
+			{Text: "first", ID: "id-1", Metadata: map[string]string{"source": "doc1"}},
+			{Text: "second", ID: "id-2", Metadata: map[string]string{"source": "doc2"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateEmbeddings() error = %v", err)
+	}
+
+	// Verify ID passthrough
+	if resp.Vectors[0].ID != "id-1" {
+		t.Errorf("Vectors[0].ID = %q, want id-1", resp.Vectors[0].ID)
+	}
+	if resp.Vectors[1].ID != "id-2" {
+		t.Errorf("Vectors[1].ID = %q, want id-2", resp.Vectors[1].ID)
+	}
+
+	// Verify Metadata passthrough
+	if resp.Vectors[0].Metadata["source"] != "doc1" {
+		t.Errorf("Vectors[0].Metadata[source] = %q, want doc1", resp.Vectors[0].Metadata["source"])
+	}
+	if resp.Vectors[1].Metadata["source"] != "doc2" {
+		t.Errorf("Vectors[1].Metadata[source] = %q, want doc2", resp.Vectors[1].Metadata["source"])
+	}
+}
+
+func TestCreateEmbeddings_Base64Format(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req openAIEmbeddingRequest
+		json.NewDecoder(r.Body).Decode(&req)
+
+		if req.EncodingFormat != "base64" {
+			t.Errorf("EncodingFormat = %q, want base64", req.EncodingFormat)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(openAIEmbeddingResponse{
+			Object: "list",
+			Data: []openAIEmbeddingData{
+				{Object: "embedding", Index: 0, Embedding: "SGVsbG8gV29ybGQ="},
+			},
+			Model: "text-embedding-3-small",
+			Usage: openAIEmbeddingUsage{PromptTokens: 2, TotalTokens: 2},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	resp, err := provider.CreateEmbeddings(context.Background(), &core.EmbeddingRequest{
+		Model:          "text-embedding-3-small",
+		Input:          []core.EmbeddingInput{{Text: "hello"}},
+		EncodingFormat: core.EncodingFormatBase64,
+	})
+	if err != nil {
+		t.Fatalf("CreateEmbeddings() error = %v", err)
+	}
+
+	if resp.Vectors[0].VectorB64 != "SGVsbG8gV29ybGQ=" {
+		t.Errorf("VectorB64 = %q, want SGVsbG8gV29ybGQ=", resp.Vectors[0].VectorB64)
+	}
+	if len(resp.Vectors[0].Vector) != 0 {
+		t.Errorf("Vector should be empty for base64 format")
+	}
+}

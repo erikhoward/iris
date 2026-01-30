@@ -114,3 +114,6 @@ var _ core.Provider = (*OpenAI)(nil)
 
 // Compile-time check that OpenAI implements ImageGenerator.
 var _ core.ImageGenerator = (*OpenAI)(nil)
+
+// Compile-time check that OpenAI implements EmbeddingProvider.
+var _ core.EmbeddingProvider = (*OpenAI)(nil)
