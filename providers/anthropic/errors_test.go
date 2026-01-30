@@ -161,3 +161,25 @@ func TestNewDecodeError(t *testing.T) {
 		t.Errorf("Message = %q, want 'unexpected EOF'", provErr.Message)
 	}
 }
+
+func TestErrFileNotDownloadable(t *testing.T) {
+	if ErrFileNotDownloadable == nil {
+		t.Error("ErrFileNotDownloadable should not be nil")
+	}
+	if ErrFileNotDownloadable.Error() != "file not downloadable" {
+		t.Errorf("unexpected error message: %s", ErrFileNotDownloadable.Error())
+	}
+}
+
+func TestNormalizeError404(t *testing.T) {
+	body := []byte(`{"type":"error","error":{"type":"not_found_error","message":"File not found"}}`)
+	err := normalizeError(404, body, "req-123")
+
+	var provErr *core.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("expected ProviderError, got %T", err)
+	}
+	if !errors.Is(provErr, core.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", provErr.Err)
+	}
+}
