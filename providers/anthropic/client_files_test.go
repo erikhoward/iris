@@ -368,3 +368,58 @@ func TestDownloadFileNotDownloadable(t *testing.T) {
 		t.Errorf("expected code 'file_not_downloadable', got %q", provErr.Code)
 	}
 }
+
+func TestDeleteFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/v1/files/file_011CNha8iCJcU1wXNR6q4V8w" {
+			t.Errorf("expected /v1/files/file_011CNha8iCJcU1wXNR6q4V8w, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(FileDeleteResponse{
+			ID:   "file_011CNha8iCJcU1wXNR6q4V8w",
+			Type: "file_deleted",
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	err := provider.DeleteFile(context.Background(), "file_011CNha8iCJcU1wXNR6q4V8w")
+	if err != nil {
+		t.Fatalf("DeleteFile failed: %v", err)
+	}
+}
+
+func TestDeleteFileNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]any{
+			"type": "error",
+			"error": map[string]any{
+				"type":    "not_found_error",
+				"message": "File not found",
+			},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	err := provider.DeleteFile(context.Background(), "file-nonexistent")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var provErr *core.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("expected ProviderError, got %T", err)
+	}
+	if !errors.Is(provErr, core.ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", provErr.Err)
+	}
+}

@@ -248,3 +248,36 @@ func (p *Anthropic) DownloadFile(ctx context.Context, fileID string) (io.ReadClo
 
 	return resp.Body, nil
 }
+
+// DeleteFile deletes a file.
+func (p *Anthropic) DeleteFile(ctx context.Context, fileID string) error {
+	url := p.config.BaseURL + filesPath + "/" + fileID
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	for key, values := range p.buildFilesHeaders() {
+		for _, v := range values {
+			httpReq.Header.Add(key, v)
+		}
+	}
+
+	resp, err := p.config.HTTPClient.Do(httpReq)
+	if err != nil {
+		return newNetworkError(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return newNetworkError(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return normalizeError(resp.StatusCode, body, resp.Header.Get("request-id"))
+	}
+
+	return nil
+}
