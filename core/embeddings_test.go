@@ -59,3 +59,37 @@ func TestEmbeddingResponse_Fields(t *testing.T) {
 		t.Errorf("Usage.PromptTokens = %d, want 5", resp.Usage.PromptTokens)
 	}
 }
+
+func TestInputType_Values(t *testing.T) {
+	tests := []struct {
+		it   InputType
+		want string
+	}{
+		{InputTypeNone, ""},
+		{InputTypeQuery, "query"},
+		{InputTypeDocument, "document"},
+	}
+	for _, tt := range tests {
+		if string(tt.it) != tt.want {
+			t.Errorf("InputType = %q, want %q", tt.it, tt.want)
+		}
+	}
+}
+
+func TestOutputDType_Values(t *testing.T) {
+	tests := []struct {
+		dt   OutputDType
+		want string
+	}{
+		{OutputDTypeFloat, "float"},
+		{OutputDTypeInt8, "int8"},
+		{OutputDTypeUint8, "uint8"},
+		{OutputDTypeBinary, "binary"},
+		{OutputDTypeUbinary, "ubinary"},
+	}
+	for _, tt := range tests {
+		if string(tt.dt) != tt.want {
+			t.Errorf("OutputDType = %q, want %q", tt.dt, tt.want)
+		}
+	}
+}
