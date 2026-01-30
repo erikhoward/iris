@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/erikhoward/iris/core"
 )
@@ -275,5 +276,87 @@ func TestDeleteFile_NotFound(t *testing.T) {
 	err := provider.DeleteFile(context.Background(), "files/nonexistent")
 	if err == nil {
 		t.Fatal("Expected error, got nil")
+	}
+}
+
+func TestWaitForFileActive_AlreadyActive(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(File{
+			Name:  "files/test-123",
+			State: FileStateActive,
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	file, err := provider.WaitForFileActive(ctx, "files/test-123")
+	if err != nil {
+		t.Fatalf("WaitForFileActive() error = %v", err)
+	}
+
+	if file.State != FileStateActive {
+		t.Errorf("State = %q, want ACTIVE", file.State)
+	}
+}
+
+func TestWaitForFileActive_BecomesActive(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		state := FileStateProcessing
+		if callCount >= 2 {
+			state = FileStateActive
+		}
+		json.NewEncoder(w).Encode(File{
+			Name:  "files/test-123",
+			State: state,
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	file, err := provider.WaitForFileActive(ctx, "files/test-123")
+	if err != nil {
+		t.Fatalf("WaitForFileActive() error = %v", err)
+	}
+
+	if file.State != FileStateActive {
+		t.Errorf("State = %q, want ACTIVE", file.State)
+	}
+	if callCount < 2 {
+		t.Errorf("callCount = %d, want >= 2", callCount)
+	}
+}
+
+func TestWaitForFileActive_Failed(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(File{
+			Name:  "files/test-123",
+			State: FileStateFailed,
+			Error: &FileError{Code: 500, Message: "Processing failed"},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := provider.WaitForFileActive(ctx, "files/test-123")
+	if err == nil {
+		t.Fatal("Expected error for failed file")
+	}
+
+	if !errors.Is(err, ErrFileFailed) {
+		t.Errorf("Expected ErrFileFailed, got %v", err)
 	}
 }

@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/erikhoward/iris/core"
 )
 
 const (
@@ -244,4 +247,46 @@ func (p *Gemini) DeleteFile(ctx context.Context, name string) error {
 	}
 
 	return nil
+}
+
+// WaitForFileActive polls until file reaches ACTIVE state or fails.
+// Returns ErrFileFailed if processing fails.
+func (p *Gemini) WaitForFileActive(ctx context.Context, name string) (*File, error) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	// First check immediately
+	file, err := p.GetFile(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		switch file.State {
+		case FileStateActive:
+			return file, nil
+		case FileStateFailed:
+			msg := "file processing failed"
+			if file.Error != nil {
+				msg = file.Error.Message
+			}
+			return nil, &core.ProviderError{
+				Provider: "gemini",
+				Code:     "file_failed",
+				Message:  msg,
+				Err:      ErrFileFailed,
+			}
+		}
+
+		// Wait for next poll or context cancellation
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-ticker.C:
+			file, err = p.GetFile(ctx, name)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 }
