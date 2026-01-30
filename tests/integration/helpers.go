@@ -51,6 +51,24 @@ func getAnthropicKey(t *testing.T) string {
 	return key
 }
 
+// skipIfNoGeminiKey skips the test if GEMINI_API_KEY is not set.
+func skipIfNoGeminiKey(t *testing.T) {
+	t.Helper()
+	if os.Getenv("GEMINI_API_KEY") == "" {
+		t.Skip("GEMINI_API_KEY not set")
+	}
+}
+
+// getGeminiKey returns the Gemini API key from environment.
+func getGeminiKey(t *testing.T) string {
+	t.Helper()
+	key := os.Getenv("GEMINI_API_KEY")
+	if key == "" {
+		t.Fatal("GEMINI_API_KEY not set")
+	}
+	return key
+}
+
 // cliResult holds the result of running a CLI command.
 type cliResult struct {
 	Stdout   string
