@@ -208,3 +208,47 @@ func TestCreateEmbeddings_Base64Format(t *testing.T) {
 		t.Errorf("Vector should be empty for base64 format")
 	}
 }
+
+func TestCreateEmbeddings_WithDimensions(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req openAIEmbeddingRequest
+		json.NewDecoder(r.Body).Decode(&req)
+
+		if req.Dimensions == nil || *req.Dimensions != 256 {
+			t.Errorf("Dimensions = %v, want 256", req.Dimensions)
+		}
+
+		// Return 256-dimension vector
+		embedding := make([]float64, 256)
+		for i := range embedding {
+			embedding[i] = float64(i) * 0.001
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(openAIEmbeddingResponse{
+			Object: "list",
+			Data: []openAIEmbeddingData{
+				{Object: "embedding", Index: 0, Embedding: embedding},
+			},
+			Model: "text-embedding-3-large",
+			Usage: openAIEmbeddingUsage{PromptTokens: 2, TotalTokens: 2},
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL+"/v1"))
+
+	dims := 256
+	resp, err := provider.CreateEmbeddings(context.Background(), &core.EmbeddingRequest{
+		Model:      "text-embedding-3-large",
+		Input:      []core.EmbeddingInput{{Text: "hello"}},
+		Dimensions: &dims,
+	})
+	if err != nil {
+		t.Fatalf("CreateEmbeddings() error = %v", err)
+	}
+
+	if len(resp.Vectors[0].Vector) != 256 {
+		t.Errorf("len(Vector) = %d, want 256", len(resp.Vectors[0].Vector))
+	}
+}
