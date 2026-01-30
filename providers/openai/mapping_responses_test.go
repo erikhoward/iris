@@ -481,6 +481,25 @@ func TestBuildResponsesRequestWithoutToolResources(t *testing.T) {
 	}
 }
 
+func TestBuildResponsesInputBackwardCompatibility(t *testing.T) {
+	// Simple text-only message should use the text format (not array)
+	msgs := []core.Message{
+		{Role: core.RoleUser, Content: "Hello"},
+	}
+
+	input := buildResponsesInput(msgs, "")
+	got, err := json.Marshal(input)
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+
+	// Should be simple string, not array
+	want := `"Hello"`
+	if string(got) != want {
+		t.Errorf("buildResponsesInput = %s, want %s", got, want)
+	}
+}
+
 func TestBuildResponsesInputMultimodal(t *testing.T) {
 	tests := []struct {
 		name         string

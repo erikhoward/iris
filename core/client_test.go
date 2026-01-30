@@ -859,3 +859,25 @@ func TestUserWithFileID(t *testing.T) {
 		t.Errorf("FileID = %q, want file-doc456", file.FileID)
 	}
 }
+
+func TestBackwardCompatibilitySimpleUser(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	// Old-style .User() should still work
+	builder := client.Chat("test-model").
+		User("Hello, world!")
+
+	req := builder.req
+	if len(req.Messages) != 1 {
+		t.Fatalf("Messages length = %d, want 1", len(req.Messages))
+	}
+
+	msg := req.Messages[0]
+	if msg.Content != "Hello, world!" {
+		t.Errorf("Content = %q, want %q", msg.Content, "Hello, world!")
+	}
+	if len(msg.Parts) != 0 {
+		t.Errorf("Parts should be empty for simple messages, got %d", len(msg.Parts))
+	}
+}
