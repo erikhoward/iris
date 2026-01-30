@@ -69,6 +69,24 @@ func getGeminiKey(t *testing.T) string {
 	return key
 }
 
+// skipIfNoZaiKey skips the test if ZAI_API_KEY is not set.
+func skipIfNoZaiKey(t *testing.T) {
+	t.Helper()
+	if os.Getenv("ZAI_API_KEY") == "" {
+		t.Skip("ZAI_API_KEY not set")
+	}
+}
+
+// getZaiKey returns the Z.ai API key from environment.
+func getZaiKey(t *testing.T) string {
+	t.Helper()
+	key := os.Getenv("ZAI_API_KEY")
+	if key == "" {
+		t.Fatal("ZAI_API_KEY not set")
+	}
+	return key
+}
+
 // cliResult holds the result of running a CLI command.
 type cliResult struct {
 	Stdout   string
