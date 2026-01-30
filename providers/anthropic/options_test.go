@@ -66,3 +66,18 @@ func TestDefaultConstants(t *testing.T) {
 		t.Errorf("DefaultVersion = %q, want '2023-06-01'", DefaultVersion)
 	}
 }
+
+func TestWithFilesAPIBeta(t *testing.T) {
+	cfg := &Config{}
+	WithFilesAPIBeta("files-api-2025-04-14")(cfg)
+
+	if cfg.FilesAPIBeta != "files-api-2025-04-14" {
+		t.Errorf("FilesAPIBeta = %q, want 'files-api-2025-04-14'", cfg.FilesAPIBeta)
+	}
+}
+
+func TestDefaultFilesAPIBeta(t *testing.T) {
+	if DefaultFilesAPIBeta != "files-api-2025-04-14" {
+		t.Errorf("DefaultFilesAPIBeta = %q, want 'files-api-2025-04-14'", DefaultFilesAPIBeta)
+	}
+}

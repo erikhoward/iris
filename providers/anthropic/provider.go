@@ -16,10 +16,11 @@ type Anthropic struct {
 // New creates a new Anthropic provider with the given API key and options.
 func New(apiKey string, opts ...Option) *Anthropic {
 	cfg := Config{
-		APIKey:     apiKey,
-		BaseURL:    DefaultBaseURL,
-		HTTPClient: http.DefaultClient,
-		Version:    DefaultVersion,
+		APIKey:       apiKey,
+		BaseURL:      DefaultBaseURL,
+		HTTPClient:   http.DefaultClient,
+		Version:      DefaultVersion,
+		FilesAPIBeta: DefaultFilesAPIBeta,
 	}
 
 	for _, opt := range opts {
