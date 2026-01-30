@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/erikhoward/iris/core"
 )
 
 // filesPath is the API endpoint for files.
@@ -199,4 +201,50 @@ func (p *Anthropic) ListAllFiles(ctx context.Context) ([]File, error) {
 	}
 
 	return allFiles, nil
+}
+
+// DownloadFile retrieves the content of a file.
+// Pre-checks downloadability; returns ErrFileNotDownloadable for user-uploaded files.
+// Caller is responsible for closing the returned ReadCloser.
+func (p *Anthropic) DownloadFile(ctx context.Context, fileID string) (io.ReadCloser, error) {
+	// Pre-check: Get file metadata to verify downloadability
+	file, err := p.GetFile(ctx, fileID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !file.Downloadable {
+		return nil, &core.ProviderError{
+			Provider: "anthropic",
+			Code:     "file_not_downloadable",
+			Message:  fmt.Sprintf("file %s is not downloadable (only tool-generated files can be downloaded)", fileID),
+			Err:      ErrFileNotDownloadable,
+		}
+	}
+
+	url := p.config.BaseURL + filesPath + "/" + fileID + "/content"
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	for key, values := range p.buildFilesHeaders() {
+		for _, v := range values {
+			httpReq.Header.Add(key, v)
+		}
+	}
+
+	resp, err := p.config.HTTPClient.Do(httpReq)
+	if err != nil {
+		return nil, newNetworkError(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		return nil, normalizeError(resp.StatusCode, body, resp.Header.Get("request-id"))
+	}
+
+	return resp.Body, nil
 }

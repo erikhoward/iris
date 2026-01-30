@@ -289,3 +289,82 @@ func TestListAllFiles(t *testing.T) {
 		t.Errorf("expected 2 API calls, got %d", callCount)
 	}
 }
+
+func TestDownloadFile(t *testing.T) {
+	content := []byte("file content here")
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount == 1 {
+			// First call: GetFile for pre-check
+			if r.URL.Path != "/v1/files/file_downloadable" {
+				t.Errorf("expected /v1/files/file_downloadable, got %s", r.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(File{
+				ID:           "file_downloadable",
+				Type:         "file",
+				Downloadable: true,
+			})
+		} else {
+			// Second call: actual download
+			if r.URL.Path != "/v1/files/file_downloadable/content" {
+				t.Errorf("expected /v1/files/file_downloadable/content, got %s", r.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Write(content)
+		}
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	reader, err := provider.DownloadFile(context.Background(), "file_downloadable")
+	if err != nil {
+		t.Fatalf("DownloadFile failed: %v", err)
+	}
+	defer reader.Close()
+
+	downloaded, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("failed to read content: %v", err)
+	}
+
+	if string(downloaded) != string(content) {
+		t.Errorf("expected %q, got %q", content, downloaded)
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 API calls (pre-check + download), got %d", callCount)
+	}
+}
+
+func TestDownloadFileNotDownloadable(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(File{
+			ID:           "file_uploaded",
+			Type:         "file",
+			Downloadable: false,
+		})
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	_, err := provider.DownloadFile(context.Background(), "file_uploaded")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, ErrFileNotDownloadable) {
+		t.Errorf("expected ErrFileNotDownloadable, got %v", err)
+	}
+
+	var provErr *core.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("expected ProviderError, got %T", err)
+	}
+	if provErr.Code != "file_not_downloadable" {
+		t.Errorf("expected code 'file_not_downloadable', got %q", provErr.Code)
+	}
+}
