@@ -304,6 +304,82 @@ func (b *ChatBuilder) Stream(ctx context.Context) (*ChatStream, error) {
 	return wrapStreamWithTelemetry(stream, b.client.telemetry, providerID, b.req.Model, start), nil
 }
 
+// MessageBuilder provides a fluent API for building multimodal messages.
+type MessageBuilder struct {
+	parent *ChatBuilder
+	role   Role
+	parts  []ContentPart
+}
+
+// UserMultimodal starts building a multimodal user message.
+func (b *ChatBuilder) UserMultimodal() *MessageBuilder {
+	return &MessageBuilder{
+		parent: b,
+		role:   RoleUser,
+		parts:  make([]ContentPart, 0),
+	}
+}
+
+// Text adds a text content part to the message.
+func (m *MessageBuilder) Text(s string) *MessageBuilder {
+	m.parts = append(m.parts, &InputText{Text: s})
+	return m
+}
+
+// ImageURL adds an image by URL (HTTPS or data URL).
+func (m *MessageBuilder) ImageURL(url string) *MessageBuilder {
+	m.parts = append(m.parts, &InputImage{ImageURL: url})
+	return m
+}
+
+// ImageURLWithDetail adds an image by URL with a specific detail level.
+func (m *MessageBuilder) ImageURLWithDetail(url string, detail ImageDetail) *MessageBuilder {
+	m.parts = append(m.parts, &InputImage{ImageURL: url, Detail: detail})
+	return m
+}
+
+// ImageFileID adds an image by file ID from the Files API.
+func (m *MessageBuilder) ImageFileID(fileID string) *MessageBuilder {
+	m.parts = append(m.parts, &InputImage{FileID: fileID})
+	return m
+}
+
+// ImageFileIDWithDetail adds an image by file ID with a specific detail level.
+func (m *MessageBuilder) ImageFileIDWithDetail(fileID string, detail ImageDetail) *MessageBuilder {
+	m.parts = append(m.parts, &InputImage{FileID: fileID, Detail: detail})
+	return m
+}
+
+// FileURL adds a file by URL.
+func (m *MessageBuilder) FileURL(url string) *MessageBuilder {
+	m.parts = append(m.parts, &InputFile{FileURL: url})
+	return m
+}
+
+// FileID adds a file by file ID from the Files API.
+func (m *MessageBuilder) FileID(fileID string) *MessageBuilder {
+	m.parts = append(m.parts, &InputFile{FileID: fileID})
+	return m
+}
+
+// FileBase64 adds a file with base64-encoded content.
+func (m *MessageBuilder) FileBase64(filename, base64Data string) *MessageBuilder {
+	m.parts = append(m.parts, &InputFile{
+		Filename: filename,
+		FileData: base64Data,
+	})
+	return m
+}
+
+// Done completes the message and returns to the ChatBuilder.
+func (m *MessageBuilder) Done() *ChatBuilder {
+	m.parent.req.Messages = append(m.parent.req.Messages, Message{
+		Role:  m.role,
+		Parts: m.parts,
+	})
+	return m.parent
+}
+
 // wrapStreamWithTelemetry wraps a ChatStream to emit telemetry on completion.
 func wrapStreamWithTelemetry(
 	stream *ChatStream,
