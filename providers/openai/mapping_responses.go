@@ -100,7 +100,7 @@ func buildResponsesInput(msgs []core.Message, instructions string) responsesInpu
 
 		messages = append(messages, responsesInputMessage{
 			Role:    role,
-			Content: msg.Content,
+			Content: responsesContent{Text: msg.Content},
 		})
 	}
 

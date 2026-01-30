@@ -84,3 +84,82 @@ func TestResponsesContentPartMarshal(t *testing.T) {
 		})
 	}
 }
+
+func TestResponsesInputMessageMarshal(t *testing.T) {
+	tests := []struct {
+		name string
+		msg  responsesInputMessage
+		want string
+	}{
+		{
+			name: "simple text content",
+			msg: responsesInputMessage{
+				Role:    "user",
+				Content: responsesContent{Text: "Hello"},
+			},
+			want: `{"role":"user","content":"Hello"}`,
+		},
+		{
+			name: "multimodal content",
+			msg: responsesInputMessage{
+				Role: "user",
+				Content: responsesContent{
+					Parts: []responsesContentPart{
+						{Type: "input_text", Text: "What's in this image?"},
+						{Type: "input_image", ImageURL: "https://example.com/cat.jpg"},
+					},
+				},
+			},
+			want: `{"role":"user","content":[{"type":"input_text","text":"What's in this image?"},{"type":"input_image","image_url":"https://example.com/cat.jpg"}]}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := json.Marshal(tt.msg)
+			if err != nil {
+				t.Fatalf("Marshal error: %v", err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("Marshal = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResponsesContentUnmarshal(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantText  string
+		wantParts int
+	}{
+		{
+			name:      "string content",
+			input:     `"Hello world"`,
+			wantText:  "Hello world",
+			wantParts: 0,
+		},
+		{
+			name:      "array content",
+			input:     `[{"type":"input_text","text":"Hi"},{"type":"input_image","image_url":"https://example.com/img.jpg"}]`,
+			wantText:  "",
+			wantParts: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var content responsesContent
+			if err := json.Unmarshal([]byte(tt.input), &content); err != nil {
+				t.Fatalf("Unmarshal error: %v", err)
+			}
+			if content.Text != tt.wantText {
+				t.Errorf("Text = %q, want %q", content.Text, tt.wantText)
+			}
+			if len(content.Parts) != tt.wantParts {
+				t.Errorf("len(Parts) = %d, want %d", len(content.Parts), tt.wantParts)
+			}
+		})
+	}
+}

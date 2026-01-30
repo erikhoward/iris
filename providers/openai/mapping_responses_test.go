@@ -412,8 +412,8 @@ func TestResponsesToolInputMarshalText(t *testing.T) {
 func TestResponsesToolInputMarshalMessages(t *testing.T) {
 	input := responsesInput{
 		Messages: []responsesInputMessage{
-			{Role: "user", Content: "Hi"},
-			{Role: "assistant", Content: "Hello"},
+			{Role: "user", Content: responsesContent{Text: "Hi"}},
+			{Role: "assistant", Content: responsesContent{Text: "Hello"}},
 		},
 	}
 

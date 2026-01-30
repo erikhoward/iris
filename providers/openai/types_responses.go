@@ -57,10 +57,48 @@ func (r responsesInput) MarshalJSON() ([]byte, error) {
 	return json.Marshal(r.Messages)
 }
 
+// responsesContent can be either a string or an array of content parts.
+// Custom marshaling handles both cases.
+type responsesContent struct {
+	Text  string                 // Simple text content
+	Parts []responsesContentPart // Multimodal content parts
+}
+
+// MarshalJSON implements custom marshaling for responsesContent.
+// If Parts is set, marshals as array. Otherwise marshals Text as string.
+func (c responsesContent) MarshalJSON() ([]byte, error) {
+	if len(c.Parts) > 0 {
+		return json.Marshal(c.Parts)
+	}
+	return json.Marshal(c.Text)
+}
+
+// UnmarshalJSON implements custom unmarshaling for responsesContent.
+// Handles both string and array formats.
+func (c *responsesContent) UnmarshalJSON(data []byte) error {
+	// Try string first
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		c.Text = text
+		c.Parts = nil
+		return nil
+	}
+
+	// Try array of parts
+	var parts []responsesContentPart
+	if err := json.Unmarshal(data, &parts); err != nil {
+		return err
+	}
+	c.Parts = parts
+	c.Text = ""
+	return nil
+}
+
 // responsesInputMessage represents a message in the Responses API input.
+// Content can be simple text or multimodal content parts.
 type responsesInputMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role    string           `json:"role"`
+	Content responsesContent `json:"content"`
 }
 
 // responsesContentPart represents a content part in a Responses API input message.
