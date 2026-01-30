@@ -5,6 +5,7 @@ package integration
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,14 +13,31 @@ import (
 	"github.com/erikhoward/iris/providers/zai"
 )
 
+// zaiTestMutex ensures Z.ai tests run sequentially to avoid rate limiting.
+var zaiTestMutex sync.Mutex
+
+// zaiTestSetup acquires the mutex and returns cleanup function.
+// This prevents concurrent Z.ai API calls which cause rate limiting.
+func zaiTestSetup(t *testing.T) func() {
+	t.Helper()
+	zaiTestMutex.Lock()
+	return func() {
+		// Small delay between tests to avoid rate limiting
+		time.Sleep(500 * time.Millisecond)
+		zaiTestMutex.Unlock()
+	}
+}
+
 func TestZai_ChatCompletion(t *testing.T) {
 	skipIfNoZaiKey(t)
+	cleanup := zaiTestSetup(t)
+	defer cleanup()
 
 	apiKey := getZaiKey(t)
 	provider := zai.New(apiKey)
 	client := core.NewClient(provider)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	resp, err := client.Chat(zai.ModelGLM47Flash).
@@ -52,12 +70,14 @@ func TestZai_ChatCompletion(t *testing.T) {
 
 func TestZai_ChatCompletion_Streaming(t *testing.T) {
 	skipIfNoZaiKey(t)
+	cleanup := zaiTestSetup(t)
+	defer cleanup()
 
 	apiKey := getZaiKey(t)
 	provider := zai.New(apiKey)
 	client := core.NewClient(provider)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	stream, err := client.Chat(zai.ModelGLM47Flash).
@@ -111,12 +131,14 @@ func TestZai_ChatCompletion_Streaming(t *testing.T) {
 
 func TestZai_ChatCompletion_WithTools(t *testing.T) {
 	skipIfNoZaiKey(t)
+	cleanup := zaiTestSetup(t)
+	defer cleanup()
 
 	apiKey := getZaiKey(t)
 	provider := zai.New(apiKey)
 	client := core.NewClient(provider)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	tool := createTestTool()
@@ -154,12 +176,14 @@ func TestZai_ChatCompletion_WithTools(t *testing.T) {
 
 func TestZai_ChatCompletion_SystemMessage(t *testing.T) {
 	skipIfNoZaiKey(t)
+	cleanup := zaiTestSetup(t)
+	defer cleanup()
 
 	apiKey := getZaiKey(t)
 	provider := zai.New(apiKey)
 	client := core.NewClient(provider)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	resp, err := client.Chat(zai.ModelGLM47Flash).
@@ -196,12 +220,14 @@ func TestZai_ChatCompletion_SystemMessage(t *testing.T) {
 
 func TestZai_ChatCompletion_Temperature(t *testing.T) {
 	skipIfNoZaiKey(t)
+	cleanup := zaiTestSetup(t)
+	defer cleanup()
 
 	apiKey := getZaiKey(t)
 	provider := zai.New(apiKey)
 	client := core.NewClient(provider)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	// Low temperature should give more deterministic output
@@ -228,12 +254,14 @@ func TestZai_ChatCompletion_Temperature(t *testing.T) {
 
 func TestZai_ChatCompletion_MaxTokens(t *testing.T) {
 	skipIfNoZaiKey(t)
+	cleanup := zaiTestSetup(t)
+	defer cleanup()
 
 	apiKey := getZaiKey(t)
 	provider := zai.New(apiKey)
 	client := core.NewClient(provider)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	// Very low max tokens should truncate response
@@ -257,12 +285,14 @@ func TestZai_ChatCompletion_MaxTokens(t *testing.T) {
 
 func TestZai_ChatCompletion_MultipleMessages(t *testing.T) {
 	skipIfNoZaiKey(t)
+	cleanup := zaiTestSetup(t)
+	defer cleanup()
 
 	apiKey := getZaiKey(t)
 	provider := zai.New(apiKey)
 	client := core.NewClient(provider)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	resp, err := client.Chat(zai.ModelGLM47Flash).
@@ -290,12 +320,14 @@ func TestZai_ChatCompletion_MultipleMessages(t *testing.T) {
 
 func TestZai_ChatCompletion_GLM47(t *testing.T) {
 	skipIfNoZaiKey(t)
+	cleanup := zaiTestSetup(t)
+	defer cleanup()
 
 	apiKey := getZaiKey(t)
 	provider := zai.New(apiKey)
 	client := core.NewClient(provider)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
 	// Test with GLM-4.7 flagship model
@@ -322,12 +354,14 @@ func TestZai_ChatCompletion_GLM47(t *testing.T) {
 
 func TestZai_ChatCompletion_GLM45Flash(t *testing.T) {
 	skipIfNoZaiKey(t)
+	cleanup := zaiTestSetup(t)
+	defer cleanup()
 
 	apiKey := getZaiKey(t)
 	provider := zai.New(apiKey)
 	client := core.NewClient(provider)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	// Test with GLM-4.5 Flash model (different series)
