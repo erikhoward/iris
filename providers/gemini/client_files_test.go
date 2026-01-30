@@ -196,3 +196,41 @@ func TestListFiles_WithPageToken(t *testing.T) {
 		t.Errorf("len(Files) = %d, want 1", len(resp.Files))
 	}
 }
+
+func TestListAllFiles(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		pageToken := r.URL.Query().Get("pageToken")
+
+		switch {
+		case pageToken == "":
+			// First page
+			json.NewEncoder(w).Encode(FileListResponse{
+				Files:         []File{{Name: "files/1"}, {Name: "files/2"}},
+				NextPageToken: "page2",
+			})
+		case pageToken == "page2":
+			// Second page
+			json.NewEncoder(w).Encode(FileListResponse{
+				Files:         []File{{Name: "files/3"}},
+				NextPageToken: "",
+			})
+		}
+	}))
+	defer server.Close()
+
+	provider := New("test-key", WithBaseURL(server.URL))
+
+	files, err := provider.ListAllFiles(context.Background())
+	if err != nil {
+		t.Fatalf("ListAllFiles() error = %v", err)
+	}
+
+	if len(files) != 3 {
+		t.Errorf("len(files) = %d, want 3", len(files))
+	}
+	if callCount != 2 {
+		t.Errorf("callCount = %d, want 2 (pagination)", callCount)
+	}
+}

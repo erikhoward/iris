@@ -193,3 +193,30 @@ func (p *Gemini) ListFiles(ctx context.Context, req *FileListRequest) (*FileList
 
 	return &result, nil
 }
+
+// ListAllFiles returns all files, handling pagination automatically.
+func (p *Gemini) ListAllFiles(ctx context.Context) ([]File, error) {
+	var allFiles []File
+	var pageToken string
+
+	for {
+		req := &FileListRequest{
+			PageSize:  100,
+			PageToken: pageToken,
+		}
+
+		resp, err := p.ListFiles(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+
+		allFiles = append(allFiles, resp.Files...)
+
+		if resp.NextPageToken == "" {
+			break
+		}
+		pageToken = resp.NextPageToken
+	}
+
+	return allFiles, nil
+}
