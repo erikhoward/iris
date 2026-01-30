@@ -756,3 +756,106 @@ func TestMessageBuilderChaining(t *testing.T) {
 		t.Errorf("Temperature not set correctly")
 	}
 }
+
+func TestUserWithImageURL(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserWithImageURL("Describe this", "https://example.com/img.jpg")
+
+	req := builder.req
+	if len(req.Messages) != 1 {
+		t.Fatalf("Messages length = %d, want 1", len(req.Messages))
+	}
+
+	msg := req.Messages[0]
+	if len(msg.Parts) != 2 {
+		t.Fatalf("Parts length = %d, want 2", len(msg.Parts))
+	}
+
+	text := msg.Parts[0].(*InputText)
+	if text.Text != "Describe this" {
+		t.Errorf("Text = %q, want %q", text.Text, "Describe this")
+	}
+
+	img := msg.Parts[1].(*InputImage)
+	if img.ImageURL != "https://example.com/img.jpg" {
+		t.Errorf("ImageURL = %q, want expected URL", img.ImageURL)
+	}
+}
+
+func TestUserWithFileURL(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserWithFileURL("Summarize this", "https://example.com/doc.pdf")
+
+	req := builder.req
+	msg := req.Messages[0]
+
+	if msg.Role != RoleUser {
+		t.Errorf("Role = %q, want user", msg.Role)
+	}
+
+	text := msg.Parts[0].(*InputText)
+	if text.Text != "Summarize this" {
+		t.Errorf("Text = %q, want %q", text.Text, "Summarize this")
+	}
+
+	file := msg.Parts[1].(*InputFile)
+	if file.FileURL != "https://example.com/doc.pdf" {
+		t.Errorf("FileURL = %q, want expected URL", file.FileURL)
+	}
+}
+
+func TestUserWithImageFileID(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserWithImageFileID("Describe this", "file-img123")
+
+	req := builder.req
+	msg := req.Messages[0]
+
+	if msg.Role != RoleUser {
+		t.Errorf("Role = %q, want user", msg.Role)
+	}
+
+	text := msg.Parts[0].(*InputText)
+	if text.Text != "Describe this" {
+		t.Errorf("Text = %q, want %q", text.Text, "Describe this")
+	}
+
+	img := msg.Parts[1].(*InputImage)
+	if img.FileID != "file-img123" {
+		t.Errorf("FileID = %q, want file-img123", img.FileID)
+	}
+}
+
+func TestUserWithFileID(t *testing.T) {
+	provider := &mockProvider{id: "test"}
+	client := NewClient(provider)
+
+	builder := client.Chat("test-model").
+		UserWithFileID("Summarize this", "file-doc456")
+
+	req := builder.req
+	msg := req.Messages[0]
+
+	if msg.Role != RoleUser {
+		t.Errorf("Role = %q, want user", msg.Role)
+	}
+
+	text := msg.Parts[0].(*InputText)
+	if text.Text != "Summarize this" {
+		t.Errorf("Text = %q, want %q", text.Text, "Summarize this")
+	}
+
+	file := msg.Parts[1].(*InputFile)
+	if file.FileID != "file-doc456" {
+		t.Errorf("FileID = %q, want file-doc456", file.FileID)
+	}
+}

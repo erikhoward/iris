@@ -380,6 +380,42 @@ func (m *MessageBuilder) Done() *ChatBuilder {
 	return m.parent
 }
 
+// UserWithImageURL adds a user message with text and an image URL.
+// This is a convenience method for common vision use cases.
+func (b *ChatBuilder) UserWithImageURL(text, imageURL string) *ChatBuilder {
+	return b.UserMultimodal().
+		Text(text).
+		ImageURL(imageURL).
+		Done()
+}
+
+// UserWithImageFileID adds a user message with text and an image file ID.
+// This is a convenience method for vision use cases with uploaded files.
+func (b *ChatBuilder) UserWithImageFileID(text, fileID string) *ChatBuilder {
+	return b.UserMultimodal().
+		Text(text).
+		ImageFileID(fileID).
+		Done()
+}
+
+// UserWithFileURL adds a user message with text and a file URL.
+// This is a convenience method for document analysis use cases.
+func (b *ChatBuilder) UserWithFileURL(text, fileURL string) *ChatBuilder {
+	return b.UserMultimodal().
+		Text(text).
+		FileURL(fileURL).
+		Done()
+}
+
+// UserWithFileID adds a user message with text and a file ID.
+// This is a convenience method for document analysis with uploaded files.
+func (b *ChatBuilder) UserWithFileID(text, fileID string) *ChatBuilder {
+	return b.UserMultimodal().
+		Text(text).
+		FileID(fileID).
+		Done()
+}
+
 // wrapStreamWithTelemetry wraps a ChatStream to emit telemetry on completion.
 func wrapStreamWithTelemetry(
 	stream *ChatStream,
