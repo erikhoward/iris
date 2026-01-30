@@ -123,6 +123,14 @@ func TestSupportsImageGeneration(t *testing.T) {
 	}
 }
 
+func TestSupportsEmbeddings(t *testing.T) {
+	p := New("test-key")
+
+	if !p.Supports(core.FeatureEmbeddings) {
+		t.Error("Expected OpenAI to support embeddings")
+	}
+}
+
 func TestImplementsImageGenerator(t *testing.T) {
 	var _ core.ImageGenerator = (*OpenAI)(nil)
 }
