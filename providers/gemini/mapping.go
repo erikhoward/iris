@@ -76,12 +76,12 @@ func mapMessages(msgs []core.Message) (system string, contents []geminiContent) 
 		case core.RoleUser:
 			contents = append(contents, geminiContent{
 				Role:  "user",
-				Parts: []geminiPart{{Text: msg.Content}},
+				Parts: mapMessageParts(msg),
 			})
 		case core.RoleAssistant:
 			contents = append(contents, geminiContent{
 				Role:  "model",
-				Parts: []geminiPart{{Text: msg.Content}},
+				Parts: mapMessageParts(msg),
 			})
 		}
 	}
@@ -92,6 +92,136 @@ func mapMessages(msgs []core.Message) (system string, contents []geminiContent) 
 	}
 
 	return system, contents
+}
+
+// mapMessageParts converts message content to Gemini parts.
+// If Parts is non-empty, it maps multimodal content; otherwise uses Content.
+func mapMessageParts(msg core.Message) []geminiPart {
+	// If no Parts, use simple text content
+	if len(msg.Parts) == 0 {
+		return []geminiPart{{Text: msg.Content}}
+	}
+
+	parts := make([]geminiPart, 0, len(msg.Parts))
+	for _, part := range msg.Parts {
+		switch p := part.(type) {
+		case core.InputText:
+			parts = append(parts, geminiPart{Text: p.Text})
+		case core.InputImage:
+			parts = append(parts, mapInputImage(p))
+		case core.InputFile:
+			parts = append(parts, mapInputFile(p))
+		}
+	}
+	return parts
+}
+
+// mapInputImage converts an InputImage to a Gemini part.
+func mapInputImage(img core.InputImage) geminiPart {
+	// If FileID is set, use FileData
+	if img.FileID != "" {
+		return geminiPart{
+			FileData: &geminiFileData{
+				FileURI: img.FileID,
+			},
+		}
+	}
+
+	// If ImageURL is a data URL, parse and use InlineData
+	if strings.HasPrefix(img.ImageURL, "data:") {
+		mimeType, data := parseDataURL(img.ImageURL)
+		return geminiPart{
+			InlineData: &geminiInlineData{
+				MimeType: mimeType,
+				Data:     data,
+			},
+		}
+	}
+
+	// External URL - use FileData
+	return geminiPart{
+		FileData: &geminiFileData{
+			FileURI: img.ImageURL,
+		},
+	}
+}
+
+// mapInputFile converts an InputFile to a Gemini part.
+func mapInputFile(file core.InputFile) geminiPart {
+	// If FileData (base64) is set, use InlineData
+	if file.FileData != "" {
+		mimeType := guessMimeType(file.Filename)
+		return geminiPart{
+			InlineData: &geminiInlineData{
+				MimeType: mimeType,
+				Data:     file.FileData,
+			},
+		}
+	}
+
+	// If FileID is set, use FileData
+	if file.FileID != "" {
+		return geminiPart{
+			FileData: &geminiFileData{
+				FileURI: file.FileID,
+			},
+		}
+	}
+
+	// If FileURL is set, use FileData
+	return geminiPart{
+		FileData: &geminiFileData{
+			FileURI: file.FileURL,
+		},
+	}
+}
+
+// parseDataURL extracts mime type and base64 data from a data URL.
+// Format: data:mime/type;base64,<data>
+func parseDataURL(dataURL string) (mimeType, data string) {
+	// Remove "data:" prefix
+	rest := strings.TrimPrefix(dataURL, "data:")
+
+	// Find the comma separator
+	commaIdx := strings.Index(rest, ",")
+	if commaIdx == -1 {
+		return "", ""
+	}
+
+	// Extract metadata and data
+	metadata := rest[:commaIdx]
+	data = rest[commaIdx+1:]
+
+	// Parse mime type from metadata (format: mime/type;base64)
+	parts := strings.Split(metadata, ";")
+	if len(parts) > 0 {
+		mimeType = parts[0]
+	}
+
+	return mimeType, data
+}
+
+// guessMimeType guesses the MIME type from a filename.
+func guessMimeType(filename string) string {
+	lower := strings.ToLower(filename)
+	switch {
+	case strings.HasSuffix(lower, ".pdf"):
+		return "application/pdf"
+	case strings.HasSuffix(lower, ".jpg"), strings.HasSuffix(lower, ".jpeg"):
+		return "image/jpeg"
+	case strings.HasSuffix(lower, ".png"):
+		return "image/png"
+	case strings.HasSuffix(lower, ".gif"):
+		return "image/gif"
+	case strings.HasSuffix(lower, ".webp"):
+		return "image/webp"
+	case strings.HasSuffix(lower, ".txt"):
+		return "text/plain"
+	case strings.HasSuffix(lower, ".json"):
+		return "application/json"
+	default:
+		return "application/octet-stream"
+	}
 }
 
 // buildThinkingConfig creates thinking configuration based on model and effort.
