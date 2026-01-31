@@ -3,6 +3,7 @@ package petalflow
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 )
@@ -694,3 +695,403 @@ func TestRuntime_Run_RouterNode_NoTargetsMatched(t *testing.T) {
 		t.Error("handler should NOT have been executed (no targets matched)")
 	}
 }
+
+// --- Concurrent Execution Tests ---
+
+func TestRuntime_Run_Concurrent_SimpleFanOut(t *testing.T) {
+	// Test: start -> branch-a, start -> branch-b (parallel execution)
+	var mu sync.Mutex
+	executed := make(map[string]bool)
+
+	g := NewGraph("concurrent-fanout")
+	g.AddNode(NewFuncNode("start", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		mu.Lock()
+		executed["start"] = true
+		mu.Unlock()
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("branch-a", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		mu.Lock()
+		executed["branch-a"] = true
+		mu.Unlock()
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("branch-b", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		mu.Lock()
+		executed["branch-b"] = true
+		mu.Unlock()
+		return env, nil
+	}))
+
+	g.AddEdge("start", "branch-a")
+	g.AddEdge("start", "branch-b")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	opts := DefaultRunOptions()
+	opts.Concurrency = 2
+
+	_, err := rt.Run(context.Background(), g, NewEnvelope(), opts)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// All nodes should be executed
+	for _, id := range []string{"start", "branch-a", "branch-b"} {
+		if !executed[id] {
+			t.Errorf("Node %s was not executed", id)
+		}
+	}
+}
+
+func TestRuntime_Run_Concurrent_FanOutMerge(t *testing.T) {
+	// Test: start -> branch-a, start -> branch-b -> merge
+	var mu sync.Mutex
+	executed := make([]string, 0)
+
+	g := NewGraph("concurrent-merge")
+	g.AddNode(NewFuncNode("start", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		mu.Lock()
+		executed = append(executed, "start")
+		mu.Unlock()
+		env.SetVar("from_start", true)
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("branch-a", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		time.Sleep(10 * time.Millisecond) // Simulate work
+		mu.Lock()
+		executed = append(executed, "branch-a")
+		mu.Unlock()
+		env.SetVar("from_a", "value-a")
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("branch-b", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		mu.Lock()
+		executed = append(executed, "branch-b")
+		mu.Unlock()
+		env.SetVar("from_b", "value-b")
+		return env, nil
+	}))
+
+	merger := NewMergeNode("merge", MergeNodeConfig{
+		Strategy: NewJSONMergeStrategy(JSONMergeConfig{}),
+	})
+	g.AddNode(merger)
+
+	g.AddNode(NewFuncNode("final", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		mu.Lock()
+		executed = append(executed, "final")
+		mu.Unlock()
+		return env, nil
+	}))
+
+	g.AddEdge("start", "branch-a")
+	g.AddEdge("start", "branch-b")
+	g.AddEdge("branch-a", "merge")
+	g.AddEdge("branch-b", "merge")
+	g.AddEdge("merge", "final")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	opts := DefaultRunOptions()
+	opts.Concurrency = 4
+
+	result, err := rt.Run(context.Background(), g, NewEnvelope(), opts)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// All nodes should be executed
+	nodeSet := make(map[string]bool)
+	for _, id := range executed {
+		nodeSet[id] = true
+	}
+	for _, id := range []string{"start", "branch-a", "branch-b", "final"} {
+		if !nodeSet[id] {
+			t.Errorf("Node %s was not executed", id)
+		}
+	}
+
+	// Merged result should have vars from both branches
+	// Note: Due to cloning, the merged result may have variables from the merge
+	if _, ok := result.GetVar("from_start"); !ok {
+		t.Error("Expected 'from_start' var in result")
+	}
+}
+
+func TestRuntime_Run_Concurrent_EnvelopeCloning(t *testing.T) {
+	// Verify that parallel branches get cloned envelopes (no race conditions)
+	var mu sync.Mutex
+	branchValues := make(map[string]string)
+
+	g := NewGraph("clone-test")
+	g.AddNode(NewFuncNode("start", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("shared", "initial")
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("branch-a", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		time.Sleep(5 * time.Millisecond)
+		env.SetVar("shared", "modified-by-a")
+		mu.Lock()
+		branchValues["a"] = env.GetVarString("shared")
+		mu.Unlock()
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("branch-b", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("shared", "modified-by-b")
+		mu.Lock()
+		branchValues["b"] = env.GetVarString("shared")
+		mu.Unlock()
+		return env, nil
+	}))
+
+	g.AddEdge("start", "branch-a")
+	g.AddEdge("start", "branch-b")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	opts := DefaultRunOptions()
+	opts.Concurrency = 2
+
+	_, err := rt.Run(context.Background(), g, NewEnvelope(), opts)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Each branch should see its own modification, not the other's
+	if branchValues["a"] != "modified-by-a" {
+		t.Errorf("branch-a saw %q, expected 'modified-by-a'", branchValues["a"])
+	}
+	if branchValues["b"] != "modified-by-b" {
+		t.Errorf("branch-b saw %q, expected 'modified-by-b'", branchValues["b"])
+	}
+}
+
+func TestRuntime_Run_Concurrent_MergeNodeWithStrategy(t *testing.T) {
+	g := NewGraph("merge-strategy")
+	g.AddNode(NewNoopNode("start"))
+	g.AddNode(NewFuncNode("branch-a", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("score", 0.8)
+		env.SetVar("source", "a")
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("branch-b", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("score", 0.95)
+		env.SetVar("source", "b")
+		return env, nil
+	}))
+
+	// Use BestScore strategy to pick the highest score
+	merger := NewMergeNode("merge", MergeNodeConfig{
+		Strategy: NewBestScoreMergeStrategy(BestScoreMergeConfig{
+			ScoreVar:       "score",
+			HigherIsBetter: true,
+		}),
+	})
+	g.AddNode(merger)
+
+	g.AddEdge("start", "branch-a")
+	g.AddEdge("start", "branch-b")
+	g.AddEdge("branch-a", "merge")
+	g.AddEdge("branch-b", "merge")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	opts := DefaultRunOptions()
+	opts.Concurrency = 2
+
+	result, err := rt.Run(context.Background(), g, NewEnvelope(), opts)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The merge should pick branch-b (higher score)
+	source, _ := result.GetVar("source")
+	if source != "b" {
+		t.Errorf("expected source 'b' (highest score), got %v", source)
+	}
+}
+
+func TestRuntime_Run_Concurrent_ErrorHandling(t *testing.T) {
+	g := NewGraph("concurrent-error")
+	g.AddNode(NewNoopNode("start"))
+	g.AddNode(NewFuncNode("branch-a", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		return nil, errors.New("branch-a failed")
+	}))
+	g.AddNode(NewNoopNode("branch-b"))
+
+	g.AddEdge("start", "branch-a")
+	g.AddEdge("start", "branch-b")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	opts := DefaultRunOptions()
+	opts.Concurrency = 2
+
+	_, err := rt.Run(context.Background(), g, NewEnvelope(), opts)
+
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+}
+
+func TestRuntime_Run_Concurrent_ErrorContinue(t *testing.T) {
+	var mu sync.Mutex
+	executed := make(map[string]bool)
+
+	g := NewGraph("concurrent-continue")
+	g.AddNode(NewNoopNode("start"))
+	g.AddNode(NewFuncNode("branch-a", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		return nil, errors.New("branch-a failed")
+	}))
+	g.AddNode(NewFuncNode("branch-b", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		mu.Lock()
+		executed["branch-b"] = true
+		mu.Unlock()
+		return env, nil
+	}))
+
+	g.AddEdge("start", "branch-a")
+	g.AddEdge("start", "branch-b")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	opts := DefaultRunOptions()
+	opts.Concurrency = 2
+	opts.ContinueOnError = true
+
+	result, err := rt.Run(context.Background(), g, NewEnvelope(), opts)
+
+	if err != nil {
+		t.Errorf("unexpected error with ContinueOnError: %v", err)
+	}
+
+	// branch-b should still execute
+	if !executed["branch-b"] {
+		t.Error("branch-b should have executed despite branch-a error")
+	}
+
+	// Error should be recorded
+	if !result.HasErrors() {
+		t.Error("expected error to be recorded")
+	}
+}
+
+func TestRuntime_Run_Concurrent_ContextCancellation(t *testing.T) {
+	g := NewGraph("concurrent-cancel")
+	g.AddNode(NewFuncNode("start", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("slow", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(10 * time.Second):
+			return env, nil
+		}
+	}))
+
+	g.AddEdge("start", "slow")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	opts := DefaultRunOptions()
+	opts.Concurrency = 2
+
+	// Cancel after a short delay
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	_, err := rt.Run(ctx, g, NewEnvelope(), opts)
+
+	if err == nil {
+		t.Error("expected error on context cancellation")
+	}
+}
+
+func TestRuntime_Run_Concurrent_DiamondPattern(t *testing.T) {
+	// Diamond: start -> a, start -> b, a -> merge, b -> merge -> end
+	var mu sync.Mutex
+	order := make([]string, 0)
+
+	g := NewGraph("diamond")
+	g.AddNode(NewFuncNode("start", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		mu.Lock()
+		order = append(order, "start")
+		mu.Unlock()
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("a", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		time.Sleep(10 * time.Millisecond)
+		mu.Lock()
+		order = append(order, "a")
+		mu.Unlock()
+		env.SetVar("from_a", true)
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("b", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		mu.Lock()
+		order = append(order, "b")
+		mu.Unlock()
+		env.SetVar("from_b", true)
+		return env, nil
+	}))
+
+	merger := NewMergeNode("merge", MergeNodeConfig{})
+	g.AddNode(merger)
+
+	g.AddNode(NewFuncNode("end", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		mu.Lock()
+		order = append(order, "end")
+		mu.Unlock()
+		return env, nil
+	}))
+
+	g.AddEdge("start", "a")
+	g.AddEdge("start", "b")
+	g.AddEdge("a", "merge")
+	g.AddEdge("b", "merge")
+	g.AddEdge("merge", "end")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	opts := DefaultRunOptions()
+	opts.Concurrency = 4
+
+	_, err := rt.Run(context.Background(), g, NewEnvelope(), opts)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify all nodes executed
+	nodeSet := make(map[string]bool)
+	for _, id := range order {
+		nodeSet[id] = true
+	}
+
+	for _, id := range []string{"start", "a", "b", "end"} {
+		if !nodeSet[id] {
+			t.Errorf("Node %s was not executed", id)
+		}
+	}
+
+	// start should be first
+	if order[0] != "start" {
+		t.Errorf("expected 'start' first, got %q", order[0])
+	}
+
+	// end should be last
+	if order[len(order)-1] != "end" {
+		t.Errorf("expected 'end' last, got %q", order[len(order)-1])
+	}
+}
+

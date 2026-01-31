@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -135,7 +136,26 @@ func (r *BasicRuntime) Run(ctx context.Context, g Graph, env *Envelope, opts Run
 
 // executeGraph performs the actual graph execution.
 // It uses dynamic successor selection to support RouterNode decisions.
+// When Concurrency > 1, parallel branches are executed concurrently.
 func (r *BasicRuntime) executeGraph(
+	ctx context.Context,
+	g Graph,
+	env *Envelope,
+	opts RunOptions,
+	emit EventEmitter,
+	runStart time.Time,
+) (*Envelope, error) {
+	// For concurrent execution, use the parallel executor
+	if opts.Concurrency > 1 {
+		return r.executeGraphParallel(ctx, g, env, opts, emit, runStart)
+	}
+
+	// Sequential execution (original behavior)
+	return r.executeGraphSequential(ctx, g, env, opts, emit, runStart)
+}
+
+// executeGraphSequential is the original sequential execution logic.
+func (r *BasicRuntime) executeGraphSequential(
 	ctx context.Context,
 	g Graph,
 	env *Envelope,
@@ -212,6 +232,261 @@ func (r *BasicRuntime) executeGraph(
 	}
 
 	return current, nil
+}
+
+// nodeResult holds the result of executing a node.
+type nodeResult struct {
+	nodeID   string
+	envelope *Envelope
+	err      error
+}
+
+// executeGraphParallel executes the graph with concurrent branches.
+func (r *BasicRuntime) executeGraphParallel(
+	ctx context.Context,
+	g Graph,
+	env *Envelope,
+	opts RunOptions,
+	emit EventEmitter,
+	runStart time.Time,
+) (*Envelope, error) {
+	// Track node states
+	type nodeState struct {
+		hopCount  int
+		completed bool
+		envelope  *Envelope // result envelope for this node
+	}
+
+	states := make(map[string]*nodeState)
+	var statesMu sync.Mutex
+
+	// Track errors across all branches
+	var recordedErrors []NodeError
+	var errorsMu sync.Mutex
+
+	// Track pending inputs for merge nodes
+	// mergeInputs[mergeNodeID] = list of envelopes from predecessors
+	mergeInputs := make(map[string][]*Envelope)
+	var mergeMu sync.Mutex
+
+	// Worker pool
+	type workItem struct {
+		nodeID   string
+		envelope *Envelope
+	}
+	workCh := make(chan workItem, opts.Concurrency*2)
+	resultCh := make(chan nodeResult, opts.Concurrency*2)
+
+	// Context with cancellation for worker shutdown
+	workerCtx, cancelWorkers := context.WithCancel(ctx)
+	defer cancelWorkers()
+
+	// Start workers
+	var wg sync.WaitGroup
+	for i := 0; i < opts.Concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-workerCtx.Done():
+					return
+				case work, ok := <-workCh:
+					if !ok {
+						return
+					}
+					node, exists := g.NodeByID(work.nodeID)
+					if !exists {
+						resultCh <- nodeResult{
+							nodeID: work.nodeID,
+							err:    fmt.Errorf("%w: %s", ErrNodeNotFound, work.nodeID),
+						}
+						continue
+					}
+
+					result, err := r.executeNode(workerCtx, node, work.envelope, opts, emit, runStart)
+					resultCh <- nodeResult{
+						nodeID:   work.nodeID,
+						envelope: result,
+						err:      err,
+					}
+				}
+			}
+		}()
+	}
+
+	// Initialize state for entry node
+	entryID := g.Entry()
+	states[entryID] = &nodeState{hopCount: 0, completed: false, envelope: env}
+
+	// Submit entry node
+	pendingCount := 1
+	workCh <- workItem{nodeID: entryID, envelope: env}
+
+	// Track the final result
+	var finalEnvelope *Envelope
+	var finalErr error
+
+	// Process results
+	for pendingCount > 0 {
+		select {
+		case <-ctx.Done():
+			cancelWorkers()
+			close(workCh)
+			wg.Wait()
+			return env, fmt.Errorf("%w: %v", ErrRunCanceled, ctx.Err())
+
+		case result := <-resultCh:
+			pendingCount--
+
+			statesMu.Lock()
+			state := states[result.nodeID]
+			if state == nil {
+				state = &nodeState{}
+				states[result.nodeID] = state
+			}
+			state.hopCount++
+			statesMu.Unlock()
+
+			// Handle error
+			if result.err != nil {
+				if opts.ContinueOnError {
+					node, _ := g.NodeByID(result.nodeID)
+					nodeErr := NodeError{
+						NodeID:  result.nodeID,
+						Kind:    node.Kind(),
+						Message: result.err.Error(),
+						Attempt: state.hopCount,
+						At:      opts.Now(),
+						Cause:   result.err,
+					}
+					errorsMu.Lock()
+					recordedErrors = append(recordedErrors, nodeErr)
+					errorsMu.Unlock()
+					// Continue with original envelope
+					result.envelope = state.envelope
+				} else {
+					// Fatal error - stop execution
+					cancelWorkers()
+					close(workCh)
+					wg.Wait()
+					return env, fmt.Errorf("%w: node %s: %v", ErrNodeExecution, result.nodeID, result.err)
+				}
+			}
+
+			// Update state
+			statesMu.Lock()
+			state.completed = true
+			state.envelope = result.envelope
+			statesMu.Unlock()
+
+			// Update final envelope (last completed node wins)
+			finalEnvelope = result.envelope
+
+			// Get the node to determine successors
+			node, _ := g.NodeByID(result.nodeID)
+			successors := r.determineSuccessors(g, node, result.envelope, emit, runStart, opts)
+
+			// Process each successor
+			for _, succID := range successors {
+				succNode, exists := g.NodeByID(succID)
+				if !exists {
+					continue
+				}
+
+				// Check if this is a merge node
+				if mergeNode, ok := succNode.(*MergeNode); ok {
+					mergeMu.Lock()
+					mergeInputs[succID] = append(mergeInputs[succID], result.envelope)
+
+					// Determine expected inputs
+					expectedInputs := mergeNode.ExpectedInputs()
+					if expectedInputs == 0 {
+						expectedInputs = len(g.Predecessors(succID))
+					}
+
+					// Check if all inputs have arrived
+					if len(mergeInputs[succID]) >= expectedInputs {
+						// All inputs ready, merge them
+						inputs := mergeInputs[succID]
+						mergeMu.Unlock()
+
+						mergedEnv, mergeErr := mergeNode.MergeInputs(ctx, inputs)
+						if mergeErr != nil {
+							if opts.ContinueOnError {
+								nodeErr := NodeError{
+									NodeID:  succID,
+									Kind:    mergeNode.Kind(),
+									Message: mergeErr.Error(),
+									At:      opts.Now(),
+									Cause:   mergeErr,
+								}
+								errorsMu.Lock()
+								recordedErrors = append(recordedErrors, nodeErr)
+								errorsMu.Unlock()
+								mergedEnv = inputs[0] // fallback to first input
+							} else {
+								finalErr = fmt.Errorf("merge node %s failed: %w", succID, mergeErr)
+								cancelWorkers()
+								close(workCh)
+								wg.Wait()
+								return env, finalErr
+							}
+						}
+
+						// Submit merged result for the merge node to process
+						statesMu.Lock()
+						states[succID] = &nodeState{hopCount: 0, envelope: mergedEnv}
+						statesMu.Unlock()
+
+						pendingCount++
+						workCh <- workItem{nodeID: succID, envelope: mergedEnv}
+					} else {
+						mergeMu.Unlock()
+						// Still waiting for more inputs
+					}
+				} else {
+					// Not a merge node - submit with cloned envelope for parallel branches
+					statesMu.Lock()
+					succState := states[succID]
+					if succState == nil {
+						succState = &nodeState{}
+						states[succID] = succState
+					}
+
+					// Check max hops
+					if succState.hopCount >= opts.MaxHops {
+						statesMu.Unlock()
+						continue
+					}
+					statesMu.Unlock()
+
+					// Clone envelope for parallel branches
+					branchEnv := result.envelope.Clone()
+
+					pendingCount++
+					workCh <- workItem{nodeID: succID, envelope: branchEnv}
+				}
+			}
+		}
+	}
+
+	// Cleanup
+	close(workCh)
+	wg.Wait()
+
+	if finalEnvelope == nil {
+		finalEnvelope = env
+	}
+
+	// Merge recorded errors into final envelope
+	errorsMu.Lock()
+	for _, err := range recordedErrors {
+		finalEnvelope.AppendError(err)
+	}
+	errorsMu.Unlock()
+
+	return finalEnvelope, finalErr
 }
 
 // determineSuccessors decides which nodes to execute next after the current node.
