@@ -1095,3 +1095,165 @@ func TestRuntime_Run_Concurrent_DiamondPattern(t *testing.T) {
 	}
 }
 
+func TestRuntime_Run_GateNode_Pass(t *testing.T) {
+	// Test GateNode allowing execution to pass through
+	g := NewGraph("gate-pass")
+
+	g.AddNode(NewFuncNode("start", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("authorized", true)
+		return env, nil
+	}))
+
+	g.AddNode(NewGateNode("gate", GateNodeConfig{
+		ConditionVar: "authorized",
+	}))
+
+	g.AddNode(NewFuncNode("end", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("reached_end", true)
+		return env, nil
+	}))
+
+	g.AddEdge("start", "gate")
+	g.AddEdge("gate", "end")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	result, err := rt.Run(context.Background(), g, NewEnvelope(), DefaultRunOptions())
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	reachedEnd, _ := result.GetVar("reached_end")
+	if reachedEnd != true {
+		t.Error("expected to reach end node when gate passes")
+	}
+}
+
+func TestRuntime_Run_GateNode_Block(t *testing.T) {
+	// Test GateNode blocking execution
+	g := NewGraph("gate-block")
+
+	g.AddNode(NewFuncNode("start", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("authorized", false)
+		return env, nil
+	}))
+
+	g.AddNode(NewGateNode("gate", GateNodeConfig{
+		ConditionVar: "authorized",
+		OnFail:       GateActionBlock,
+		FailMessage:  "access denied",
+	}))
+
+	g.AddNode(NewFuncNode("end", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("reached_end", true)
+		return env, nil
+	}))
+
+	g.AddEdge("start", "gate")
+	g.AddEdge("gate", "end")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	_, err := rt.Run(context.Background(), g, NewEnvelope(), DefaultRunOptions())
+
+	if err == nil {
+		t.Fatal("expected error when gate blocks")
+	}
+}
+
+func TestRuntime_Run_GateNode_Redirect(t *testing.T) {
+	// Test GateNode redirecting to error handler
+	g := NewGraph("gate-redirect")
+
+	g.AddNode(NewFuncNode("start", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("authorized", false)
+		return env, nil
+	}))
+
+	g.AddNode(NewGateNode("gate", GateNodeConfig{
+		ConditionVar:   "authorized",
+		OnFail:         GateActionRedirect,
+		RedirectNodeID: "error_handler",
+	}))
+
+	g.AddNode(NewFuncNode("success", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("path", "success")
+		return env, nil
+	}))
+
+	g.AddNode(NewFuncNode("error_handler", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("path", "error")
+		return env, nil
+	}))
+
+	g.AddEdge("start", "gate")
+	g.AddEdge("gate", "success")
+	g.AddEdge("gate", "error_handler")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	result, err := rt.Run(context.Background(), g, NewEnvelope(), DefaultRunOptions())
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	path, _ := result.GetVar("path")
+	if path != "error" {
+		t.Errorf("expected redirect to error_handler, got path=%v", path)
+	}
+}
+
+func TestRuntime_Run_MapNode(t *testing.T) {
+	// Test MapNode within a graph
+	g := NewGraph("map-test")
+
+	g.AddNode(NewFuncNode("start", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("numbers", []int{1, 2, 3, 4, 5})
+		return env, nil
+	}))
+
+	g.AddNode(NewMapNode("mapper", MapNodeConfig{
+		InputVar: "numbers",
+		Mapper: func(ctx context.Context, item any, index int) (any, error) {
+			n := item.(int)
+			return n * 2, nil
+		},
+	}))
+
+	g.AddNode(NewFuncNode("end", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		env.SetVar("done", true)
+		return env, nil
+	}))
+
+	g.AddEdge("start", "mapper")
+	g.AddEdge("mapper", "end")
+	g.SetEntry("start")
+
+	rt := NewRuntime()
+	result, err := rt.Run(context.Background(), g, NewEnvelope(), DefaultRunOptions())
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output, ok := result.GetVar("mapper_output")
+	if !ok {
+		t.Fatal("expected mapper_output variable")
+	}
+
+	results := output.([]any)
+	expected := []int{2, 4, 6, 8, 10}
+	for i, v := range results {
+		if v.(int) != expected[i] {
+			t.Errorf("index %d: expected %d, got %v", i, expected[i], v)
+		}
+	}
+
+	done, _ := result.GetVar("done")
+	if done != true {
+		t.Error("expected end node to execute")
+	}
+}
+

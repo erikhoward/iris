@@ -507,6 +507,31 @@ func (r *BasicRuntime) determineSuccessors(
 		return nil
 	}
 
+	// Check for GateNode redirect
+	// GateNodes with OnFail=GateActionRedirect set __gate_redirect__ in the envelope
+	if redirectVal, ok := env.GetVar("__gate_redirect__"); ok {
+		redirectNode, ok := redirectVal.(string)
+		if ok && redirectNode != "" {
+			// Verify the redirect target is a valid successor
+			for _, succ := range graphSuccessors {
+				if succ == redirectNode {
+					// Emit gate redirect event
+					emit(NewEvent(EventRouteDecision, env.Trace.RunID).
+						WithNode(nodeID, node.Kind()).
+						WithElapsed(opts.Now().Sub(runStart)).
+						WithPayload("targets", []string{redirectNode}).
+						WithPayload("reason", "gate redirect").
+						WithPayload("confidence", 1.0))
+
+					// Clear the redirect hint to prevent re-triggering
+					env.Vars["__gate_redirect__"] = nil
+
+					return []string{redirectNode}
+				}
+			}
+		}
+	}
+
 	// Check if this is a RouterNode
 	router, isRouter := node.(RouterNode)
 	if !isRouter {
