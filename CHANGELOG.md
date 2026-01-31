@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-01-31
+
+### Added
+
+- PetalFlow workflow orchestration framework for LLM-powered agent pipelines
+- Core types: `Node`, `Graph`, `Envelope`, `Runtime` for workflow execution
+- `LLMNode` for LLM completions with provider adapters
+- `ToolNode` for tool/function execution
+- `RouterNode` for conditional branching with LLM and function-based strategies
+- `MergeNode` for combining parallel branch results with 5 merge strategies
+- `MapNode` for collection iteration with concurrent processing
+- `GateNode` for conditional guards (block, skip, redirect actions)
+- `GraphBuilder` fluent API for workflow construction
+- Concurrent execution with configurable worker pools
+- Provider and Tool adapters for Iris integration
+- Event system for workflow observability
+- PetalFlow documentation with use case guides (LLM workflows, RAG pipelines, multi-provider)
+- Architecture Decision Records (ADRs) for PetalFlow design decisions
+
+### Removed
+
+- Legacy agent graph framework (replaced by PetalFlow)
+
 ## [0.6.0] - 2026-01-30
 
 ### Added
@@ -118,7 +141,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integration tests for OpenAI and CLI
 - Comprehensive SDK documentation and examples
 
-[Unreleased]: https://github.com/erikhoward/iris/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/erikhoward/iris/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/erikhoward/iris/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/erikhoward/iris/compare/v0.4.0...v0.6.0
 [0.4.0]: https://github.com/erikhoward/iris/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/erikhoward/iris/compare/v0.2.0...v0.3.0
