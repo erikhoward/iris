@@ -383,3 +383,314 @@ func TestGenerateRunID(t *testing.T) {
 		t.Error("generateRunID() should return unique IDs")
 	}
 }
+
+// RouterNode handling tests
+
+func TestRuntime_Run_RouterNode_SingleTarget(t *testing.T) {
+	// Graph: router -> handler-a, router -> handler-b
+	// Router selects only handler-a
+	executed := make(map[string]bool)
+
+	g := NewGraph("router-test")
+
+	// Add the router
+	router := NewRuleRouter("router", RuleRouterConfig{
+		Rules: []RouteRule{
+			{
+				Conditions: []RouteCondition{
+					{VarPath: "route", Op: OpEquals, Value: "a"},
+				},
+				Target: "handler-a",
+				Reason: "Route to A",
+			},
+		},
+		DefaultTarget: "handler-b",
+	})
+	g.AddNode(router)
+
+	// Add handlers
+	g.AddNode(NewFuncNode("handler-a", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		executed["handler-a"] = true
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("handler-b", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		executed["handler-b"] = true
+		return env, nil
+	}))
+
+	g.AddEdge("router", "handler-a")
+	g.AddEdge("router", "handler-b")
+	g.SetEntry("router")
+
+	rt := NewRuntime()
+	env := NewEnvelope().WithVar("route", "a")
+
+	_, err := rt.Run(context.Background(), g, env, DefaultRunOptions())
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Only handler-a should be executed
+	if !executed["handler-a"] {
+		t.Error("handler-a should have been executed")
+	}
+	if executed["handler-b"] {
+		t.Error("handler-b should NOT have been executed (not selected by router)")
+	}
+}
+
+func TestRuntime_Run_RouterNode_DefaultTarget(t *testing.T) {
+	executed := make(map[string]bool)
+
+	g := NewGraph("router-default")
+
+	router := NewRuleRouter("router", RuleRouterConfig{
+		Rules: []RouteRule{
+			{
+				Conditions: []RouteCondition{
+					{VarPath: "route", Op: OpEquals, Value: "special"},
+				},
+				Target: "special-handler",
+			},
+		},
+		DefaultTarget: "default-handler",
+	})
+	g.AddNode(router)
+
+	g.AddNode(NewFuncNode("special-handler", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		executed["special-handler"] = true
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("default-handler", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		executed["default-handler"] = true
+		return env, nil
+	}))
+
+	g.AddEdge("router", "special-handler")
+	g.AddEdge("router", "default-handler")
+	g.SetEntry("router")
+
+	rt := NewRuntime()
+	env := NewEnvelope().WithVar("route", "normal") // No match, use default
+
+	_, err := rt.Run(context.Background(), g, env, DefaultRunOptions())
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if executed["special-handler"] {
+		t.Error("special-handler should NOT have been executed")
+	}
+	if !executed["default-handler"] {
+		t.Error("default-handler should have been executed (default target)")
+	}
+}
+
+func TestRuntime_Run_RouterNode_MultipleTargets(t *testing.T) {
+	executed := make(map[string]bool)
+
+	g := NewGraph("router-multi")
+
+	router := NewRuleRouter("router", RuleRouterConfig{
+		Rules: []RouteRule{
+			{
+				Conditions: []RouteCondition{
+					{VarPath: "notify_email", Op: OpExists},
+				},
+				Target: "email-handler",
+			},
+			{
+				Conditions: []RouteCondition{
+					{VarPath: "notify_sms", Op: OpExists},
+				},
+				Target: "sms-handler",
+			},
+		},
+		AllowMultiple: true,
+	})
+	g.AddNode(router)
+
+	g.AddNode(NewFuncNode("email-handler", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		executed["email-handler"] = true
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("sms-handler", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		executed["sms-handler"] = true
+		return env, nil
+	}))
+
+	g.AddEdge("router", "email-handler")
+	g.AddEdge("router", "sms-handler")
+	g.SetEntry("router")
+
+	rt := NewRuntime()
+	env := NewEnvelope().
+		WithVar("notify_email", true).
+		WithVar("notify_sms", true)
+
+	_, err := rt.Run(context.Background(), g, env, DefaultRunOptions())
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Both handlers should be executed
+	if !executed["email-handler"] {
+		t.Error("email-handler should have been executed")
+	}
+	if !executed["sms-handler"] {
+		t.Error("sms-handler should have been executed")
+	}
+}
+
+func TestRuntime_Run_RouterNode_EventEmitted(t *testing.T) {
+	g := NewGraph("router-event")
+
+	router := NewRuleRouter("classifier", RuleRouterConfig{
+		Rules: []RouteRule{
+			{Target: "next", Reason: "Always"},
+		},
+	})
+	g.AddNode(router)
+	g.AddNode(NewNoopNode("next"))
+	g.AddEdge("classifier", "next")
+	g.SetEntry("classifier")
+
+	rt := NewRuntime()
+	var routeEvent *Event
+
+	opts := DefaultRunOptions()
+	opts.EventHandler = func(e Event) {
+		if e.Kind == EventRouteDecision {
+			routeEvent = &e
+		}
+	}
+
+	_, err := rt.Run(context.Background(), g, NewEnvelope(), opts)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if routeEvent == nil {
+		t.Fatal("EventRouteDecision should have been emitted")
+	}
+	if routeEvent.NodeID != "classifier" {
+		t.Errorf("expected NodeID 'classifier', got %q", routeEvent.NodeID)
+	}
+	if routeEvent.Payload["targets"] == nil {
+		t.Error("EventRouteDecision should contain targets")
+	}
+	if routeEvent.Payload["reason"] != "Always" {
+		t.Errorf("expected reason 'Always', got %v", routeEvent.Payload["reason"])
+	}
+}
+
+func TestRuntime_Run_RouterNode_ChainedRouters(t *testing.T) {
+	// Test router -> handler -> router -> final
+	executed := make([]string, 0)
+
+	g := NewGraph("chained-routers")
+
+	router1 := NewRuleRouter("router1", RuleRouterConfig{
+		Rules: []RouteRule{
+			{Target: "middle", Reason: "First router"},
+		},
+	})
+	g.AddNode(router1)
+
+	g.AddNode(NewFuncNode("middle", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		executed = append(executed, "middle")
+		env.SetVar("second_route", "final")
+		return env, nil
+	}))
+
+	router2 := NewRuleRouter("router2", RuleRouterConfig{
+		Rules: []RouteRule{
+			{
+				Conditions: []RouteCondition{
+					{VarPath: "second_route", Op: OpEquals, Value: "final"},
+				},
+				Target: "final",
+			},
+		},
+		DefaultTarget: "alternate",
+	})
+	g.AddNode(router2)
+
+	g.AddNode(NewFuncNode("final", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		executed = append(executed, "final")
+		return env, nil
+	}))
+	g.AddNode(NewFuncNode("alternate", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		executed = append(executed, "alternate")
+		return env, nil
+	}))
+
+	g.AddEdge("router1", "middle")
+	g.AddEdge("middle", "router2")
+	g.AddEdge("router2", "final")
+	g.AddEdge("router2", "alternate")
+	g.SetEntry("router1")
+
+	rt := NewRuntime()
+	_, err := rt.Run(context.Background(), g, NewEnvelope(), DefaultRunOptions())
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should execute: middle, final (not alternate)
+	if len(executed) != 2 {
+		t.Errorf("expected 2 nodes executed, got %d: %v", len(executed), executed)
+	}
+	if executed[0] != "middle" {
+		t.Errorf("expected first 'middle', got %q", executed[0])
+	}
+	if executed[1] != "final" {
+		t.Errorf("expected second 'final', got %q", executed[1])
+	}
+}
+
+func TestRuntime_Run_RouterNode_NoTargetsMatched(t *testing.T) {
+	// When no rules match and no default, the router returns empty targets
+	// The runtime should handle this gracefully (no successors visited)
+	executed := make(map[string]bool)
+
+	g := NewGraph("router-no-match")
+
+	router := NewRuleRouter("router", RuleRouterConfig{
+		Rules: []RouteRule{
+			{
+				Conditions: []RouteCondition{
+					{VarPath: "impossible", Op: OpEquals, Value: "never"},
+				},
+				Target: "handler",
+			},
+		},
+		// No DefaultTarget
+	})
+	g.AddNode(router)
+
+	g.AddNode(NewFuncNode("handler", func(ctx context.Context, env *Envelope) (*Envelope, error) {
+		executed["handler"] = true
+		return env, nil
+	}))
+
+	g.AddEdge("router", "handler")
+	g.SetEntry("router")
+
+	rt := NewRuntime()
+	_, err := rt.Run(context.Background(), g, NewEnvelope(), DefaultRunOptions())
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Handler should NOT be executed since router returned no targets
+	if executed["handler"] {
+		t.Error("handler should NOT have been executed (no targets matched)")
+	}
+}

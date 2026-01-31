@@ -134,6 +134,7 @@ func (r *BasicRuntime) Run(ctx context.Context, g Graph, env *Envelope, opts Run
 }
 
 // executeGraph performs the actual graph execution.
+// It uses dynamic successor selection to support RouterNode decisions.
 func (r *BasicRuntime) executeGraph(
 	ctx context.Context,
 	g Graph,
@@ -142,18 +143,28 @@ func (r *BasicRuntime) executeGraph(
 	emit EventEmitter,
 	runStart time.Time,
 ) (*Envelope, error) {
-	// Get execution order
-	// For sequential execution, we follow edges from entry
-	// In future, this will use topological sort for parallel execution
-	order, err := computeExecutionOrder(g)
-	if err != nil {
-		return nil, err
-	}
-
 	hopCount := make(map[string]int)
 	current := env
 
-	for _, nodeID := range order {
+	// Use a queue for dynamic execution order
+	// Start with the entry node
+	queue := []string{g.Entry()}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		// Pop next node from queue
+		nodeID := queue[0]
+		queue = queue[1:]
+
+		// Skip if already visited in this execution path
+		// (this prevents infinite loops in non-router cases)
+		if visited[nodeID] && hopCount[nodeID] > 0 {
+			// For cycles, check max hops
+			if hopCount[nodeID] >= opts.MaxHops {
+				continue
+			}
+		}
+
 		// Check context cancellation
 		select {
 		case <-ctx.Done():
@@ -191,9 +202,81 @@ func (r *BasicRuntime) executeGraph(
 		} else {
 			current = result
 		}
+
+		// Mark as visited
+		visited[nodeID] = true
+
+		// Determine next nodes to execute
+		nextNodes := r.determineSuccessors(g, node, current, emit, runStart, opts)
+		queue = append(queue, nextNodes...)
 	}
 
 	return current, nil
+}
+
+// determineSuccessors decides which nodes to execute next after the current node.
+// For RouterNodes, it uses the RouteDecision; for others, it uses all graph successors.
+func (r *BasicRuntime) determineSuccessors(
+	g Graph,
+	node Node,
+	env *Envelope,
+	emit EventEmitter,
+	runStart time.Time,
+	opts RunOptions,
+) []string {
+	nodeID := node.ID()
+	graphSuccessors := g.Successors(nodeID)
+
+	// If no successors in graph, nothing to execute next
+	if len(graphSuccessors) == 0 {
+		return nil
+	}
+
+	// Check if this is a RouterNode
+	router, isRouter := node.(RouterNode)
+	if !isRouter {
+		// Not a router, use all graph successors
+		return graphSuccessors
+	}
+
+	// Get the routing decision from the envelope
+	// RouterNodes store their decision in the envelope during Run()
+	decisionKey := nodeID + "_decision"
+	decisionVal, ok := env.GetVar(decisionKey)
+	if !ok {
+		// No decision stored, fall back to all successors
+		return graphSuccessors
+	}
+
+	decision, ok := decisionVal.(RouteDecision)
+	if !ok {
+		// Invalid decision type, fall back to all successors
+		return graphSuccessors
+	}
+
+	// Emit routing decision event
+	emit(NewEvent(EventRouteDecision, env.Trace.RunID).
+		WithNode(nodeID, router.Kind()).
+		WithElapsed(opts.Now().Sub(runStart)).
+		WithPayload("targets", decision.Targets).
+		WithPayload("reason", decision.Reason).
+		WithPayload("confidence", decision.Confidence))
+
+	// Filter successors to only those in the decision targets
+	// The decision targets are node IDs that should be executed
+	var filteredSuccessors []string
+	targetSet := make(map[string]bool)
+	for _, t := range decision.Targets {
+		targetSet[t] = true
+	}
+
+	for _, succ := range graphSuccessors {
+		if targetSet[succ] {
+			filteredSuccessors = append(filteredSuccessors, succ)
+		}
+	}
+
+	return filteredSuccessors
 }
 
 // executeNode executes a single node with event emission.
@@ -259,37 +342,6 @@ func validateGraph(g Graph) error {
 	}
 
 	return nil
-}
-
-// computeExecutionOrder determines the order of node execution.
-// For now, this performs a simple traversal from the entry node.
-// Future versions will support parallel execution with dependency tracking.
-func computeExecutionOrder(g Graph) ([]string, error) {
-	entry := g.Entry()
-	if entry == "" {
-		return nil, ErrNoEntryNode
-	}
-
-	// Simple DFS traversal for sequential execution
-	visited := make(map[string]bool)
-	order := make([]string, 0)
-
-	var visit func(id string)
-	visit = func(id string) {
-		if visited[id] {
-			return
-		}
-		visited[id] = true
-		order = append(order, id)
-
-		// Visit successors
-		for _, succ := range g.Successors(id) {
-			visit(succ)
-		}
-	}
-
-	visit(entry)
-	return order, nil
 }
 
 // generateRunID creates a unique run identifier.

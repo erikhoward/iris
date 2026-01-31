@@ -24,6 +24,9 @@ const (
 	// EventNodeFinished is emitted when a node completes successfully.
 	EventNodeFinished EventKind = "node_finished"
 
+	// EventRouteDecision is emitted when a router node makes a routing decision.
+	EventRouteDecision EventKind = "route_decision"
+
 	// EventRunFinished is emitted when a graph run completes.
 	EventRunFinished EventKind = "run_finished"
 )
