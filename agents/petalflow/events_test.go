@@ -109,7 +109,7 @@ func TestEvent_Chaining(t *testing.T) {
 	event := NewEvent(EventNodeFinished, "run-123").
 		WithNode("node-1", NodeKindTool).
 		WithAttempt(2).
-		WithElapsed(100 * time.Millisecond).
+		WithElapsed(100*time.Millisecond).
 		WithPayload("result", "success")
 
 	if event.Kind != EventNodeFinished {

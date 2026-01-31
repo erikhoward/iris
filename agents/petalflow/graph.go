@@ -50,23 +50,23 @@ type Edge struct {
 
 // BasicGraph is a simple implementation of the Graph interface.
 type BasicGraph struct {
-	name        string
-	nodes       map[string]Node
-	nodeOrder   []string // preserves insertion order
-	edges       []Edge
-	successors  map[string][]string // node ID -> successor IDs
+	name         string
+	nodes        map[string]Node
+	nodeOrder    []string // preserves insertion order
+	edges        []Edge
+	successors   map[string][]string // node ID -> successor IDs
 	predecessors map[string][]string // node ID -> predecessor IDs
-	entry       string
+	entry        string
 }
 
 // NewGraph creates a new empty graph with the given name.
 func NewGraph(name string) *BasicGraph {
 	return &BasicGraph{
-		name:        name,
-		nodes:       make(map[string]Node),
-		nodeOrder:   make([]string, 0),
-		edges:       make([]Edge, 0),
-		successors:  make(map[string][]string),
+		name:         name,
+		nodes:        make(map[string]Node),
+		nodeOrder:    make([]string, 0),
+		edges:        make([]Edge, 0),
+		successors:   make(map[string][]string),
 		predecessors: make(map[string][]string),
 	}
 }

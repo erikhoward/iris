@@ -1256,4 +1256,3 @@ func TestRuntime_Run_MapNode(t *testing.T) {
 		t.Error("expected end node to execute")
 	}
 }
-

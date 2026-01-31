@@ -153,18 +153,9 @@ func (s *JSONMergeStrategy) Merge(ctx context.Context, inputs []*Envelope) (*Env
 
 		// Merge other envelope fields unless VarsOnly is set
 		if !s.config.VarsOnly {
-			// Merge artifacts
-			for _, a := range input.Artifacts {
-				result.Artifacts = append(result.Artifacts, a)
-			}
-			// Merge messages
-			for _, m := range input.Messages {
-				result.Messages = append(result.Messages, m)
-			}
-			// Merge errors
-			for _, e := range input.Errors {
-				result.Errors = append(result.Errors, e)
-			}
+			result.Artifacts = append(result.Artifacts, input.Artifacts...)
+			result.Messages = append(result.Messages, input.Messages...)
+			result.Errors = append(result.Errors, input.Errors...)
 		}
 	}
 
@@ -280,15 +271,9 @@ func (s *ConcatMergeStrategy) Merge(ctx context.Context, inputs []*Envelope) (*E
 		if input == nil {
 			continue
 		}
-		for _, a := range input.Artifacts {
-			result.Artifacts = append(result.Artifacts, a)
-		}
-		for _, m := range input.Messages {
-			result.Messages = append(result.Messages, m)
-		}
-		for _, e := range input.Errors {
-			result.Errors = append(result.Errors, e)
-		}
+		result.Artifacts = append(result.Artifacts, input.Artifacts...)
+		result.Messages = append(result.Messages, input.Messages...)
+		result.Errors = append(result.Errors, input.Errors...)
 	}
 
 	return result, nil

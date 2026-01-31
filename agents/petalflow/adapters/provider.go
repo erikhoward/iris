@@ -18,14 +18,14 @@ type LLMClient interface {
 // LLMRequest is the request structure for LLM completion.
 // It is transport-agnostic and works across different providers.
 type LLMRequest struct {
-	Model       string            // model identifier (e.g., "gpt-4", "claude-3-opus")
-	System      string            // system prompt
-	Messages    []LLMMessage      // conversation messages
-	InputText   string            // optional: simple prompt mode (converted to user message)
-	JSONSchema  map[string]any    // optional: structured output constraints
-	Temperature *float64          // optional: sampling temperature
-	MaxTokens   *int              // optional: maximum output tokens
-	Meta        map[string]any    // trace/cost controls
+	Model       string         // model identifier (e.g., "gpt-4", "claude-3-opus")
+	System      string         // system prompt
+	Messages    []LLMMessage   // conversation messages
+	InputText   string         // optional: simple prompt mode (converted to user message)
+	JSONSchema  map[string]any // optional: structured output constraints
+	Temperature *float64       // optional: sampling temperature
+	MaxTokens   *int           // optional: maximum output tokens
+	Meta        map[string]any // trace/cost controls
 }
 
 // LLMMessage is a chat message in PetalFlow format.
@@ -38,14 +38,14 @@ type LLMMessage struct {
 
 // LLMResponse captures the output from an LLM call.
 type LLMResponse struct {
-	Text      string            // raw text output
-	JSON      map[string]any    // parsed JSON if structured output was requested
-	Messages  []LLMMessage      // conversation messages including response
-	Usage     LLMTokenUsage     // token consumption
-	Provider  string            // provider ID that handled the request
-	Model     string            // model that generated the response
-	ToolCalls []LLMToolCall     // tool calls requested by the model
-	Meta      map[string]any    // additional response metadata
+	Text      string         // raw text output
+	JSON      map[string]any // parsed JSON if structured output was requested
+	Messages  []LLMMessage   // conversation messages including response
+	Usage     LLMTokenUsage  // token consumption
+	Provider  string         // provider ID that handled the request
+	Model     string         // model that generated the response
+	ToolCalls []LLMToolCall  // tool calls requested by the model
+	Meta      map[string]any // additional response metadata
 }
 
 // LLMTokenUsage tracks token consumption.
@@ -158,7 +158,7 @@ func (a *ProviderAdapter) fromCoreChatResponse(resp *core.ChatResponse, req LLMR
 		for i, tc := range resp.ToolCalls {
 			args := make(map[string]any)
 			if len(tc.Arguments) > 0 {
-				json.Unmarshal(tc.Arguments, &args)
+				_ = json.Unmarshal(tc.Arguments, &args) // Best effort parsing
 			}
 			result.ToolCalls[i] = LLMToolCall{
 				ID:        tc.ID,
@@ -178,9 +178,7 @@ func (a *ProviderAdapter) fromCoreChatResponse(resp *core.ChatResponse, req LLMR
 
 	// Build messages including the assistant response
 	result.Messages = make([]LLMMessage, 0, len(req.Messages)+1)
-	for _, m := range req.Messages {
-		result.Messages = append(result.Messages, m)
-	}
+	result.Messages = append(result.Messages, req.Messages...)
 	result.Messages = append(result.Messages, LLMMessage{
 		Role:    "assistant",
 		Content: resp.Output,

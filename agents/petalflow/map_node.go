@@ -202,10 +202,11 @@ func (n *MapNode) mapConcurrent(ctx context.Context, env *Envelope, items []any)
 	}
 
 	// Submit work
+submitLoop:
 	for i, item := range items {
 		select {
 		case <-workerCtx.Done():
-			break
+			break submitLoop
 		case workCh <- workItem{index: i, item: item}:
 		}
 	}
