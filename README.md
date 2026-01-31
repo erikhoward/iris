@@ -19,7 +19,6 @@ Iris solves these problems by providing:
 - **Fluent Builder Pattern**: Intuitive, chainable API for constructing requests
 - **Built-in Streaming**: First-class support for streaming responses with proper channel handling
 - **Secure Key Management**: Encrypted local storage for API keys
-- **Agent Graphs**: A framework for building stateful, multi-step AI workflows
 - **CLI Tool**: Quickly test models and manage projects from the command line
 
 ## Features
@@ -695,48 +694,6 @@ Ollama supports any model you have pulled locally. Use `ollama pull <model>` to 
 
 See https://ollama.com/library for all available models.
 
-## Agent Graphs
-
-Define agent workflows in YAML:
-
-```yaml
-name: my-agent
-entry: start
-
-nodes:
-  - id: start
-    type: prompt
-    config:
-      template: "Process: {{.input}}"
-  - id: process
-    type: llm
-    config:
-      model: gpt-5
-  - id: output
-    type: output
-
-edges:
-  - from: start
-    to: process
-  - from: process
-    to: output
-```
-
-Export to Mermaid for visualization:
-
-```bash
-iris graph export agent.yaml
-```
-
-```mermaid
-graph TD
-    start[start]
-    process[process]
-    output[output]
-    start --> process
-    process --> output
-```
-
 ## Development
 
 ### Prerequisites
@@ -885,7 +842,6 @@ import (
     "github.com/erikhoward/iris/providers/perplexity"
     "github.com/erikhoward/iris/providers/ollama"
     "github.com/erikhoward/iris/tools"
-    "github.com/erikhoward/iris/agents/graph"
 )
 ```
 
