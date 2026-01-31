@@ -162,6 +162,25 @@ func getVoyageAPIKey(t *testing.T) string {
 	return key
 }
 
+// skipIfNoPerplexityKey skips the test if PERPLEXITY_API_KEY is not set.
+// In CI, it fails unless IRIS_SKIP_INTEGRATION is set.
+func skipIfNoPerplexityKey(t *testing.T) {
+	t.Helper()
+	if os.Getenv("PERPLEXITY_API_KEY") == "" {
+		skipOrFailOnMissingKey(t, "PERPLEXITY_API_KEY")
+	}
+}
+
+// getPerplexityKey returns the Perplexity API key from environment.
+func getPerplexityKey(t *testing.T) string {
+	t.Helper()
+	key := os.Getenv("PERPLEXITY_API_KEY")
+	if key == "" {
+		t.Fatal("PERPLEXITY_API_KEY not set")
+	}
+	return key
+}
+
 // cliResult holds the result of running a CLI command.
 type cliResult struct {
 	Stdout   string

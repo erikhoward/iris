@@ -15,7 +15,7 @@ Building AI applications often requires:
 - Creating reusable agent workflows
 
 Iris solves these problems by providing:
-- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, Google Gemini, xAI Grok, Z.ai GLM, Ollama)
+- **Unified SDK**: A consistent Go API across providers (OpenAI, Anthropic, Google Gemini, xAI Grok, Z.ai GLM, Perplexity, Ollama)
 - **Fluent Builder Pattern**: Intuitive, chainable API for constructing requests
 - **Built-in Streaming**: First-class support for streaming responses with proper channel handling
 - **Secure Key Management**: Encrypted local storage for API keys
@@ -288,6 +288,42 @@ if resp.Reasoning != nil && len(resp.Reasoning.Summary) > 0 {
 }
 ```
 
+### Using Perplexity Search
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/erikhoward/iris/core"
+    "github.com/erikhoward/iris/providers/perplexity"
+)
+
+func main() {
+    // Create a Perplexity provider
+    provider := perplexity.New(os.Getenv("PERPLEXITY_API_KEY"))
+
+    // Create a client
+    client := core.NewClient(provider)
+
+    // Send a search-grounded chat request
+    resp, err := client.Chat(perplexity.ModelSonar).
+        System("You are a helpful assistant.").
+        User("What are the latest developments in AI?").
+        GetResponse(context.Background())
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error:", err)
+        os.Exit(1)
+    }
+
+    fmt.Println(resp.Output)
+}
+```
+
 ### Using Ollama
 
 ```go
@@ -541,6 +577,7 @@ iris/
 │   ├── gemini/     # Google Gemini provider
 │   ├── xai/        # xAI Grok provider
 │   ├── zai/        # Z.ai GLM provider
+│   ├── perplexity/ # Perplexity Search provider
 │   └── ollama/     # Ollama provider (local and cloud)
 ├── tools/          # Tool/function calling framework
 ├── agents/         # Agent graph framework
@@ -587,6 +624,7 @@ providers:
 | Google Gemini | Supported | Chat, Streaming, Tools, Reasoning |
 | xAI Grok | Supported | Chat, Streaming, Tools, Reasoning |
 | Z.ai GLM | Supported | Chat, Streaming, Tools, Thinking |
+| Perplexity | Supported | Chat, Streaming, Tools, Web Search |
 | Ollama | Supported | Chat, Streaming, Tools, Thinking |
 
 ### xAI Grok Models
@@ -620,6 +658,15 @@ providers:
 | `glm-4.5-airx` | Chat, Streaming, Tools |
 | `glm-4.5-flash` | Chat, Streaming, Tools |
 | `glm-4-32b-0414-128k` | Chat, Streaming, Tools (128K context) |
+
+### Perplexity Models
+
+| Model ID | Features |
+|----------|----------|
+| `sonar` | Chat, Streaming, Tools, Web Search (lightweight) |
+| `sonar-pro` | Chat, Streaming, Tools, Web Search (advanced) |
+| `sonar-reasoning-pro` | Chat, Streaming, Tools, Web Search, Reasoning |
+| `sonar-deep-research` | Chat, Streaming, Web Search, Reasoning (research) |
 
 ### Gemini Models
 
@@ -835,6 +882,7 @@ import (
     "github.com/erikhoward/iris/providers/gemini"
     "github.com/erikhoward/iris/providers/xai"
     "github.com/erikhoward/iris/providers/zai"
+    "github.com/erikhoward/iris/providers/perplexity"
     "github.com/erikhoward/iris/providers/ollama"
     "github.com/erikhoward/iris/tools"
     "github.com/erikhoward/iris/agents/graph"
@@ -875,7 +923,7 @@ List registered providers:
 ```go
 import "github.com/erikhoward/iris/providers"
 
-fmt.Println(providers.List()) // [anthropic gemini huggingface ollama openai xai zai]
+fmt.Println(providers.List()) // [anthropic gemini huggingface ollama openai perplexity xai zai]
 ```
 
 ## License
