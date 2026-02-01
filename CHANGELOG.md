@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `FilterNode` for pruning artifacts/messages with top-N, threshold, dedupe, type, match/exclude operations
+- `TransformNode` for data reshaping with pick, omit, rename, flatten, merge, template, stringify, parse operations
+- `GuardianNode` for validation with required fields, length limits, regex patterns, enum, PII detection, and schema checks
+- `CacheNode` for memoization with TTL support, stable hashing, and pluggable `CacheStore` interface
+- `SinkNode` for output to external systems (file, webhook, log, metric, var, custom) with error policies
+- `HumanNode` for human-in-the-loop workflows with approval, choice, edit, input, and review request types
+- `MemoryCacheStore` in-memory cache implementation with TTL and pruning support
+- `HumanHandler` interface with `ChannelHumanHandler`, `CallbackHumanHandler`, `AutoApproveHandler`, and `QueuedHumanHandler` implementations
+- `MockHTTPClient` and `MockMetricRecorder` test helpers for sink testing
+
 ## [0.7.0] - 2026-01-31
 
 ### Added
