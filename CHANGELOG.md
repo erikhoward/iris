@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-02-01
+
 ### Added
 
+- `StepController` interface for step-through debugging of PetalFlow workflows
+- `CallbackStepController` for simple function-based step control
+- `ChannelStepController` for interactive debugging via Go channels
+- `BreakpointStepController` for pausing only at specific nodes
+- `AutoStepController` for auto-stepping with configurable delay
+- Step actions: continue, skip, abort, run-to-breakpoint
+- `EnvelopeSnapshot` and `GraphSnapshot` for state inspection at step points
+- Step events: `step_paused`, `step_resumed`, `step_skipped`, `step_aborted`
 - `FilterNode` for pruning artifacts/messages with top-N, threshold, dedupe, type, match/exclude operations
 - `TransformNode` for data reshaping with pick, omit, rename, flatten, merge, template, stringify, parse operations
 - `GuardianNode` for validation with required fields, length limits, regex patterns, enum, PII detection, and schema checks
@@ -153,7 +163,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integration tests for OpenAI and CLI
 - Comprehensive SDK documentation and examples
 
-[Unreleased]: https://github.com/erikhoward/iris/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/erikhoward/iris/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/erikhoward/iris/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/erikhoward/iris/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/erikhoward/iris/compare/v0.4.0...v0.6.0
 [0.4.0]: https://github.com/erikhoward/iris/compare/v0.3.0...v0.4.0
