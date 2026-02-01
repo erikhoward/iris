@@ -29,6 +29,18 @@ const (
 
 	// EventRunFinished is emitted when a graph run completes.
 	EventRunFinished EventKind = "run_finished"
+
+	// EventStepPaused is emitted when execution pauses at a step point.
+	EventStepPaused EventKind = "step_paused"
+
+	// EventStepResumed is emitted when execution resumes after a step.
+	EventStepResumed EventKind = "step_resumed"
+
+	// EventStepSkipped is emitted when a node is skipped via StepActionSkipNode.
+	EventStepSkipped EventKind = "step_skipped"
+
+	// EventStepAborted is emitted when execution is aborted via StepActionAbort.
+	EventStepAborted EventKind = "step_aborted"
 )
 
 // String returns the string representation of the EventKind.
