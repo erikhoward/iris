@@ -42,6 +42,14 @@ type RunOptions struct {
 
 	// EventHandler receives events during execution.
 	EventHandler EventHandler
+
+	// StepController enables step-through debugging.
+	// If nil, execution proceeds without pausing.
+	StepController StepController
+
+	// StepConfig provides additional step-through configuration.
+	// If nil but StepController is set, DefaultStepConfig() is used.
+	StepConfig *StepConfig
 }
 
 // DefaultRunOptions returns sensible default options.
@@ -204,8 +212,64 @@ func (r *BasicRuntime) executeGraphSequential(
 			return current, fmt.Errorf("%w: %s", ErrNodeNotFound, nodeID)
 		}
 
+		// Step before node execution (if step controller is configured)
+		if opts.StepController != nil {
+			action, modifiedEnv, stepErr := r.handleStepPoint(
+				ctx, g, node, current, opts, emit, runStart,
+				StepPointBeforeNode, hopCount[nodeID], nil,
+			)
+			if stepErr != nil {
+				return current, stepErr
+			}
+			if modifiedEnv != nil {
+				current = modifiedEnv
+			}
+			switch action {
+			case StepActionAbort:
+				emit(NewEvent(EventStepAborted, current.Trace.RunID).
+					WithNode(nodeID, node.Kind()).
+					WithElapsed(opts.Now().Sub(runStart)).
+					WithPayload("reason", "controller_abort"))
+				return current, ErrStepAborted
+			case StepActionSkipNode:
+				emit(NewEvent(EventStepSkipped, current.Trace.RunID).
+					WithNode(nodeID, node.Kind()).
+					WithElapsed(opts.Now().Sub(runStart)).
+					WithPayload("reason", "controller_skip"))
+				visited[nodeID] = true
+				// Determine successors even when skipping
+				nextNodes := r.determineSuccessors(g, node, current, emit, runStart, opts)
+				queue = append(queue, nextNodes...)
+				continue
+			}
+		}
+
 		// Execute node
 		result, err := r.executeNode(ctx, node, current, opts, emit, runStart)
+
+		// Step after node execution (if step controller is configured)
+		if opts.StepController != nil {
+			// Use result if available, otherwise use current (for failed nodes)
+			envForStep := result
+			if envForStep == nil {
+				envForStep = current
+			}
+			action, _, stepErr := r.handleStepPoint(
+				ctx, g, node, envForStep, opts, emit, runStart,
+				StepPointAfterNode, hopCount[nodeID], err,
+			)
+			if stepErr != nil {
+				return current, stepErr
+			}
+			if action == StepActionAbort {
+				emit(NewEvent(EventStepAborted, current.Trace.RunID).
+					WithNode(nodeID, node.Kind()).
+					WithElapsed(opts.Now().Sub(runStart)).
+					WithPayload("reason", "controller_abort"))
+				return current, ErrStepAborted
+			}
+		}
+
 		if err != nil {
 			if opts.ContinueOnError {
 				current.AppendError(NodeError{
@@ -619,6 +683,101 @@ func (r *BasicRuntime) executeNode(
 		WithElapsed(nodeElapsed))
 
 	return result, nil
+}
+
+// handleStepPoint handles step controller interaction at a step point.
+// It returns the action to take, optionally modified envelope, and any error.
+func (r *BasicRuntime) handleStepPoint(
+	ctx context.Context,
+	g Graph,
+	node Node,
+	env *Envelope,
+	opts RunOptions,
+	emit EventEmitter,
+	runStart time.Time,
+	point StepPoint,
+	hopCount int,
+	nodeErr error,
+) (StepAction, *Envelope, error) {
+	ctrl := opts.StepController
+	if ctrl == nil {
+		return StepActionContinue, nil, nil
+	}
+
+	config := opts.StepConfig
+	if config == nil {
+		config = DefaultStepConfig()
+	}
+
+	// Check if we should pause at this point based on config
+	if point == StepPointBeforeNode && !config.PauseBeforeNode {
+		return StepActionContinue, nil, nil
+	}
+	if point == StepPointAfterNode && !config.PauseAfterNode {
+		return StepActionContinue, nil, nil
+	}
+
+	// Check controller's ShouldPause
+	if !ctrl.ShouldPause(node.ID(), point) {
+		return StepActionContinue, nil, nil
+	}
+
+	// Build step request
+	req := &StepRequest{
+		ID:        generateStepID(),
+		RunID:     env.Trace.RunID,
+		Point:     point,
+		NodeID:    node.ID(),
+		NodeKind:  node.Kind(),
+		Envelope:  createEnvelopeSnapshot(env),
+		HopCount:  hopCount,
+		Error:     nodeErr,
+		Graph:     createGraphSnapshot(g, node.ID()),
+		CreatedAt: opts.Now(),
+	}
+
+	// Emit step paused event
+	emit(NewEvent(EventStepPaused, env.Trace.RunID).
+		WithNode(node.ID(), node.Kind()).
+		WithElapsed(opts.Now().Sub(runStart)).
+		WithPayload("step_id", req.ID).
+		WithPayload("step_point", string(point)).
+		WithPayload("hop_count", hopCount))
+
+	// Apply timeout if configured
+	stepCtx := ctx
+	if config.StepTimeout > 0 {
+		var cancel context.CancelFunc
+		stepCtx, cancel = context.WithTimeout(ctx, config.StepTimeout)
+		defer cancel()
+	}
+
+	// Call controller
+	resp, err := ctrl.Step(stepCtx, req)
+	if err != nil {
+		return StepActionAbort, nil, fmt.Errorf("step controller error: %w", err)
+	}
+
+	// Emit step resumed event
+	emit(NewEvent(EventStepResumed, env.Trace.RunID).
+		WithNode(node.ID(), node.Kind()).
+		WithElapsed(opts.Now().Sub(runStart)).
+		WithPayload("step_id", req.ID).
+		WithPayload("action", string(resp.Action)))
+
+	// Apply envelope modifications if provided (only for before-node steps)
+	var modifiedEnv *Envelope
+	if resp.ModifiedEnvelope != nil && point == StepPointBeforeNode && resp.Action == StepActionContinue {
+		modifiedEnv = env.Clone()
+		for k, v := range resp.ModifiedEnvelope.SetVars {
+			modifiedEnv.SetVar(k, v)
+		}
+		for _, k := range resp.ModifiedEnvelope.DeleteVars {
+			delete(modifiedEnv.Vars, k)
+		}
+	}
+
+	return resp.Action, modifiedEnv, nil
 }
 
 // validateGraph performs basic validation.
